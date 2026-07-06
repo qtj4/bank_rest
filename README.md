@@ -1,105 +1,163 @@
-<h1>🚀 Разработка Системы Управления Банковскими Картами</h1>
+# Bank Card Management
 
-<h2>📁 Стартовая структура</h2>
-  <p>
-    Проектная структура с директориями и описательными файлами (<code>README Controller.md</code>, <code>README Service.md</code> и т.д.) уже подготовлена.<br />
-    Все реализации нужно добавлять <strong>в соответствующие директории</strong>.
-  </p>
-  <p>
-    После завершения разработки <strong>временные README-файлы нужно удалить</strong>, чтобы они не попадали в итоговую сборку.
-  </p>
-  
-<h2>📝 Описание задачи</h2>
-  <p>Разработать backend-приложение на Java (Spring Boot) для управления банковскими картами:</p>
-  <ul>
-    <li>Создание и управление картами</li>
-    <li>Просмотр карт</li>
-    <li>Переводы между своими картами</li>
-  </ul>
+Standalone Spring Boot backend for managing users, bank cards, card blocking, balances, and transfers between a user's own cards.
 
-<h2>💳 Атрибуты карты</h2>
-  <ul>
-    <li>Номер карты (зашифрован, отображается маской: <code>**** **** **** 1234</code>)</li>
-    <li>Владелец</li>
-    <li>Срок действия</li>
-    <li>Статус: Активна, Заблокирована, Истек срок</li>
-    <li>Баланс</li>
-  </ul>
+## Technology Stack
 
-<h2>🧾 Требования</h2>
+- Java 17
+- Spring Boot 3
+- Spring Web, Security, Validation, Data JPA, Actuator
+- JWT authentication
+- PostgreSQL
+- Liquibase
+- Swagger/OpenAPI
+- Maven
+- Docker Compose
+- JUnit 5, Mockito, AssertJ
 
-<h3>✅ Аутентификация и авторизация</h3>
-  <ul>
-    <li>Spring Security + JWT</li>
-    <li>Роли: <code>ADMIN</code> и <code>USER</code></li>
-  </ul>
+## Run With Docker
 
-<h3>✅ Возможности</h3>
-<strong>Администратор:</strong>
-  <ul>
-    <li>Создаёт, блокирует, активирует, удаляет карты</li>
-    <li>Управляет пользователями</li>
-    <li>Видит все карты</li>
-  </ul>
+```bash
+docker compose up --build
+```
 
-<strong>Пользователь:</strong>
-  <ul>
-    <li>Просматривает свои карты (поиск + пагинация)</li>
-    <li>Запрашивает блокировку карты</li>
-    <li>Делает переводы между своими картами</li>
-    <li>Смотрит баланс</li>
-  </ul>
+Health check:
 
-<h3>✅ API</h3>
-  <ul>
-    <li>CRUD для карт</li>
-    <li>Переводы между своими картами</li>
-    <li>Фильтрация и постраничная выдача</li>
-    <li>Валидация и сообщения об ошибках</li>
-  </ul>
+```text
+http://localhost:8080/actuator/health
+```
 
-<h3>✅ Безопасность</h3>
-  <ul>
-    <li>Шифрование данных</li>
-    <li>Ролевой доступ</li>
-    <li>Маскирование номеров карт</li>
-  </ul>
+Swagger UI:
 
-<h3>✅ Работа с БД</h3>
-  <ul>
-    <li>PostgreSQL или MySQL</li>
-    <li>Миграции через Liquibase (<code>src/main/resources/db/migration</code>)</li>
-  </ul>
+```text
+http://localhost:8080/swagger-ui/index.html
+```
 
-<h3>✅ Документация</h3>
-  <ul>
-    <li>Swagger UI / OpenAPI — <code>docs/openapi.yaml</code></li>
-    <li><code>README.md</code> с инструкцией запуска</li>
-  </ul>
+OpenAPI file:
 
-<h3>✅ Развёртывание и тестирование</h3>
-  <ul>
-    <li>Docker Compose для dev-среды</li>
-    <li>Liquibase миграции</li>
-    <li>Юнит-тесты ключевой бизнес-логики</li>
-  </ul>
+```text
+docs/openapi.yaml
+```
 
-<h2>📊 Оценка</h2>
-  <ul>
-    <li>Соответствие требованиям</li>
-    <li>Чистота архитектуры и кода</li>
-    <li>Безопасность</li>
-    <li>Обработка ошибок</li>
-    <li>Покрытие тестами</li>
-    <li>ООП и уровни абстракции</li>
-  </ul>
+Stop:
 
-<h2>💡 Технологии</h2>
-  <p>
-    Java 17+, Spring Boot, Spring Security, Spring Data JPA, PostgreSQL/MySQL, Liquibase, Docker, JWT, Swagger (OpenAPI)
-  </p>
+```bash
+docker compose down
+```
 
-<h2> 📤 Формат сдачи</h2>
-<p>
-Весь код и изменения принимаются только через git-репозиторий с открытым доступом к проекту. Отправка файлов в любом виде не принимается.
-  </p>
+Reset database:
+
+```bash
+docker compose down -v
+```
+
+## Local Admin
+
+The local Liquibase seed creates one admin account:
+
+```text
+username: admin
+password: admin123
+```
+
+These credentials are for local testing only.
+
+## JWT Usage
+
+1. Call `POST /api/v1/auth/login`.
+2. Copy the `token` value from the response.
+3. Send protected requests with:
+
+```text
+Authorization: Bearer <token>
+```
+
+## Environment Variables
+
+- `APP_PORT` - application port, default `8080`
+- `DB_URL` - JDBC URL, default `jdbc:postgresql://localhost:5432/bank_card_db`
+- `DB_USER` - database user, default `postgres`
+- `DB_PASSWORD` - database password, default `postgres`
+- `JWT_SECRET` - JWT signing secret, at least 32 characters
+- `JWT_EXPIRATION_MS` - JWT lifetime in milliseconds, default `3600000`
+- `CARD_CRYPTO_SECRET` - card encryption secret, at least 16 characters
+- `LIQUIBASE_ENABLED` - enables migrations, default `true`
+- `SHOW_SQL` - enables SQL logging, default `false`
+
+Override `JWT_SECRET` and `CARD_CRYPTO_SECRET` outside local development.
+
+## API Summary
+
+Authentication:
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+```
+
+Admin users:
+
+```text
+POST   /api/v1/admin/users
+GET    /api/v1/admin/users/{id}
+GET    /api/v1/admin/users
+PUT    /api/v1/admin/users/{id}
+DELETE /api/v1/admin/users/{id}
+```
+
+Cards:
+
+```text
+POST   /api/v1/cards
+GET    /api/v1/cards/{id}
+GET    /api/v1/cards/all
+GET    /api/v1/cards/my
+GET    /api/v1/cards/my/{id}
+GET    /api/v1/cards/{id}/balance
+PUT    /api/v1/cards/{id}
+PATCH  /api/v1/cards/{id}/block
+PATCH  /api/v1/cards/{id}/activate
+POST   /api/v1/cards/{id}/block-request
+DELETE /api/v1/cards/{id}
+```
+
+Transfers:
+
+```text
+POST /api/v1/transfers
+GET  /api/v1/transfers/my
+GET  /api/v1/transfers/{id}
+GET  /api/v1/admin/transfers
+```
+
+Useful filters:
+
+```text
+/api/v1/cards/my?page=0&size=10&status=ACTIVE&lastFourDigits=1234
+/api/v1/cards/all?page=0&size=10&status=BLOCKED&ownerId=<uuid>
+/api/v1/admin/users?page=0&size=10&search=ivan&role=USER&enabled=true
+/api/v1/transfers/my?page=0&size=10&from=2026-07-01T00:00:00&to=2026-07-31T23:59:59
+```
+
+## Business Rules
+
+- Card numbers must contain exactly 16 digits.
+- Full card numbers are never returned by the API.
+- Card numbers are stored as AES-GCM ciphertext plus SHA-256 hash for uniqueness checks.
+- Passwords are stored as BCrypt hashes.
+- Admins create, update, block, activate, delete, and list all cards.
+- Users can list only their own cards, view own balances, request blocking, and transfer between own cards.
+- Transfers require two different active, non-expired cards owned by the authenticated user.
+- Transfers are atomic and lock the two card rows in deterministic UUID order.
+- Insufficient balance, blocked cards, expired cards, invalid date ranges, and duplicate card numbers return business errors.
+- User deletion disables the account. Card deletion blocks the card when transfer history exists.
+
+## Tests
+
+Run:
+
+```bash
+mvn test
+```
+
+The unit tests cover authentication hashing/login behavior, card masking and ownership rules, status transitions, duplicate card numbers, transfer validation, locked balance updates, and date-range validation.

@@ -1,1 +1,426 @@
-# Здесь будет OpenAPI описание всех доступных эндпоинтов и моделей данных.
+openapi: 3.0.3
+info:
+  title: Bank Card Management API
+  version: v1
+  description: Backend API for user, bank card, and transfer management.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login and receive a JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /api/v1/admin/users:
+    post:
+      tags: [Admin users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    get:
+      tags: [Admin users]
+      summary: List users
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: role
+          in: query
+          schema: { $ref: '#/components/schemas/Role' }
+        - name: enabled
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Page of users
+  /api/v1/admin/users/{id}:
+    get:
+      tags: [Admin users]
+      summary: Get user by id
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    put:
+      tags: [Admin users]
+      summary: Update user
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Admin users]
+      summary: Disable user
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Disabled
+  /api/v1/cards:
+    post:
+      tags: [Cards]
+      summary: Create card for a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+  /api/v1/cards/all:
+    get:
+      tags: [Cards]
+      summary: List all cards as admin
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/CardStatus' }
+        - name: ownerId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: lastFourDigits
+          in: query
+          schema: { type: string, example: '1234' }
+      responses:
+        '200':
+          description: Page of cards
+  /api/v1/cards/my:
+    get:
+      tags: [Cards]
+      summary: List current user's cards
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/CardStatus' }
+        - name: lastFourDigits
+          in: query
+          schema: { type: string, example: '1234' }
+      responses:
+        '200':
+          description: Page of cards
+  /api/v1/cards/{id}:
+    get:
+      tags: [Cards]
+      summary: Get card as admin
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Card
+    put:
+      tags: [Cards]
+      summary: Update card as admin
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardUpdateRequest'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Cards]
+      summary: Delete card or block it when transfer history exists
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Deleted or blocked
+  /api/v1/cards/my/{id}:
+    get:
+      tags: [Cards]
+      summary: Get current user's card
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Card
+  /api/v1/cards/{id}/balance:
+    get:
+      tags: [Cards]
+      summary: Get current user's card balance
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Balance
+  /api/v1/cards/{id}/block:
+    patch:
+      tags: [Cards]
+      summary: Block card as admin
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Blocked
+  /api/v1/cards/{id}/activate:
+    patch:
+      tags: [Cards]
+      summary: Activate card as admin
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Activated
+  /api/v1/cards/{id}/block-request:
+    post:
+      tags: [Cards]
+      summary: Request blocking for current user's card
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Block requested
+  /api/v1/transfers:
+    post:
+      tags: [Transfers]
+      summary: Transfer money between current user's own cards
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '201':
+          description: Transfer created
+  /api/v1/transfers/my:
+    get:
+      tags: [Transfers]
+      summary: List current user's transfers
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Page of transfers
+  /api/v1/transfers/{id}:
+    get:
+      tags: [Transfers]
+      summary: Get current user's transfer
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Transfer
+  /api/v1/admin/transfers:
+    get:
+      tags: [Transfers]
+      summary: List all transfers as admin
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Page of transfers
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 0
+    size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        default: 10
+  schemas:
+    Role:
+      type: string
+      enum: [ADMIN, USER]
+    CardStatus:
+      type: string
+      enum: [ACTIVE, BLOCKED, EXPIRED]
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, example: admin }
+        password: { type: string, example: admin123 }
+    RegisterRequest:
+      type: object
+      required: [username, password, fullName]
+      properties:
+        username: { type: string, example: ivan }
+        password: { type: string, example: StrongPassword1 }
+        fullName: { type: string, example: Ivan Petrov }
+    UserCreateRequest:
+      type: object
+      required: [username, password, fullName, role]
+      properties:
+        username: { type: string }
+        password: { type: string }
+        fullName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        enabled: { type: boolean }
+    UserUpdateRequest:
+      type: object
+      properties:
+        fullName: { type: string }
+        password: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        enabled: { type: boolean }
+    CardCreateRequest:
+      type: object
+      required: [number, ownerId, expirationDate, balance]
+      properties:
+        number: { type: string, example: '1234 5678 9012 3456' }
+        ownerId: { type: string, format: uuid }
+        expirationDate: { type: string, format: date }
+        balance: { type: number, format: decimal, example: 100.00 }
+    CardUpdateRequest:
+      type: object
+      properties:
+        expirationDate: { type: string, format: date }
+        status: { $ref: '#/components/schemas/CardStatus' }
+        balance: { type: number, format: decimal }
+    TransferRequest:
+      type: object
+      required: [fromCardId, toCardId, amount]
+      properties:
+        fromCardId: { type: string, format: uuid }
+        toCardId: { type: string, format: uuid }
+        amount: { type: number, format: decimal, example: 25.00 }
+        description: { type: string, maxLength: 255 }
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        tokenType: { type: string, example: Bearer }
+        userId: { type: string, format: uuid }
+        username: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        fullName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CardResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        maskedNumber: { type: string, example: '**** **** **** 1234' }
+        ownerId: { type: string, format: uuid }
+        ownerName: { type: string }
+        expirationDate: { type: string, format: date }
+        status: { $ref: '#/components/schemas/CardStatus' }
+        balance: { type: number, format: decimal }
+        blockRequested: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+        status: { type: integer }
+        message: { type: string }
+        fieldErrors:
+          type: object
+          additionalProperties: { type: string }
+        timestamp: { type: string, format: date-time }
