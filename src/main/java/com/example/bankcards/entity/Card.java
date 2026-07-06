@@ -13,7 +13,13 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@Getter
+@Setter
+@NoArgsConstructor
 @Entity
 @Table(
         name = "card",
@@ -53,76 +59,4 @@ public class Card extends BaseEntity {
 
     @Column(name = "block_requested_at")
     private LocalDateTime blockRequestedAt;
-
-    public String getEncryptedNumber() {
-        return encryptedNumber;
-    }
-
-    public void setEncryptedNumber(String encryptedNumber) {
-        this.encryptedNumber = encryptedNumber;
-    }
-
-    public String getNumberHash() {
-        return numberHash;
-    }
-
-    public void setNumberHash(String numberHash) {
-        this.numberHash = numberHash;
-    }
-
-    public String getLastFourDigits() {
-        return lastFourDigits;
-    }
-
-    public void setLastFourDigits(String lastFourDigits) {
-        this.lastFourDigits = lastFourDigits;
-    }
-
-    public User getOwner() {
-        return owner;
-    }
-
-    public void setOwner(User owner) {
-        this.owner = owner;
-    }
-
-    public LocalDate getExpirationDate() {
-        return expirationDate;
-    }
-
-    public void setExpirationDate(LocalDate expirationDate) {
-        this.expirationDate = expirationDate;
-    }
-
-    public CardStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(CardStatus status) {
-        this.status = status;
-    }
-
-    public BigDecimal getBalance() {
-        return balance;
-    }
-
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
-    }
-
-    public boolean isBlockRequested() {
-        return blockRequested;
-    }
-
-    public void setBlockRequested(boolean blockRequested) {
-        this.blockRequested = blockRequested;
-    }
-
-    public LocalDateTime getBlockRequestedAt() {
-        return blockRequestedAt;
-    }
-
-    public void setBlockRequestedAt(LocalDateTime blockRequestedAt) {
-        this.blockRequestedAt = blockRequestedAt;
-    }
 }

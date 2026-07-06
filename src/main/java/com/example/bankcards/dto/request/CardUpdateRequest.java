@@ -4,13 +4,21 @@ import com.example.bankcards.entity.enums.CardStatus;
 import jakarta.validation.constraints.DecimalMin;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public record CardUpdateRequest(
-        LocalDate expirationDate,
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class CardUpdateRequest {
 
-        CardStatus status,
+    private LocalDate expirationDate;
 
-        @DecimalMin(value = "0.00", message = "Balance cannot be negative")
-        BigDecimal balance
-) {
+    private CardStatus status;
+
+    @DecimalMin(value = "0.00", message = "{validation.balance.min}")
+    private BigDecimal balance;
 }

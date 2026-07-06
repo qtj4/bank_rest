@@ -5,19 +5,27 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public record TransferRequest(
-        @NotNull(message = "Source card id is required")
-        UUID fromCardId,
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TransferRequest {
 
-        @NotNull(message = "Destination card id is required")
-        UUID toCardId,
+    @NotNull(message = "{validation.from-card-id.required}")
+    private UUID fromCardId;
 
-        @NotNull(message = "Amount is required")
-        @DecimalMin(value = "0.01", message = "Amount must be positive")
-        BigDecimal amount,
+    @NotNull(message = "{validation.to-card-id.required}")
+    private UUID toCardId;
 
-        @Size(max = 255, message = "Description must be at most 255 characters")
-        String description
-) {
+    @NotNull(message = "{validation.amount.required}")
+    @DecimalMin(value = "0.01", message = "{validation.amount.positive}")
+    private BigDecimal amount;
+
+    @Size(max = 255, message = "{validation.description.size}")
+    private String description;
 }

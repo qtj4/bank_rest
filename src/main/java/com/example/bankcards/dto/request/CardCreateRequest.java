@@ -7,20 +7,28 @@ import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public record CardCreateRequest(
-        @NotBlank(message = "Card number is required")
-        @Pattern(regexp = "^[0-9 ]{16,23}$", message = "Card number must contain 16 digits")
-        String number,
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class CardCreateRequest {
 
-        @NotNull(message = "Owner id is required")
-        UUID ownerId,
+    @NotBlank(message = "{validation.card-number.required}")
+    @Pattern(regexp = "^[0-9 ]{16,23}$", message = "{validation.card-number.invalid}")
+    private String number;
 
-        @NotNull(message = "Expiration date is required")
-        LocalDate expirationDate,
+    @NotNull(message = "{validation.owner-id.required}")
+    private UUID ownerId;
 
-        @NotNull(message = "Balance is required")
-        @DecimalMin(value = "0.00", message = "Balance cannot be negative")
-        BigDecimal balance
-) {
+    @NotNull(message = "{validation.expiration-date.required}")
+    private LocalDate expirationDate;
+
+    @NotNull(message = "{validation.balance.required}")
+    @DecimalMin(value = "0.00", message = "{validation.balance.min}")
+    private BigDecimal balance;
 }

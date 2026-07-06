@@ -1,12 +1,12 @@
 package com.example.bankcards.security;
 
 import com.example.bankcards.dto.response.ErrorResponse;
+import com.example.bankcards.service.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -23,24 +23,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsServiceImpl userDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
+    private final MessageService messageService;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             UserDetailsServiceImpl userDetailsService,
             PasswordEncoder passwordEncoder,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            MessageService messageService
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
         this.passwordEncoder = passwordEncoder;
         this.objectMapper = objectMapper;
+        this.messageService = messageService;
     }
 
     @Bean
@@ -53,25 +55,17 @@ public class SecurityConfig {
                                 response,
                                 HttpServletResponse.SC_UNAUTHORIZED,
                                 "UNAUTHORIZED",
-                                "Authentication is required"
+                                messageService.get("error.auth.required")
                         ))
                         .accessDeniedHandler((request, response, exception) -> writeError(
                                 response,
                                 HttpServletResponse.SC_FORBIDDEN,
                                 "FORBIDDEN",
-                                "Access denied"
+                                messageService.get("error.access.denied")
                         )))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/health").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/cards").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/cards/{id}").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/cards/{id}").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/cards/{id}/block").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/cards/{id}/activate").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/cards/all").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/cards/{id}").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

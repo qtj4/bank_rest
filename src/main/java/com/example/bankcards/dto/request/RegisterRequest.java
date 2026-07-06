@@ -3,21 +3,29 @@ package com.example.bankcards.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public record RegisterRequest(
-        @Schema(example = "ivan")
-        @NotBlank(message = "Username is required")
-        @Size(max = 255, message = "Username must be at most 255 characters")
-        String username,
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class RegisterRequest {
 
-        @Schema(example = "StrongPassword1")
-        @NotBlank(message = "Password is required")
-        @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
-        String password,
+    @Schema(example = "ivan")
+    @NotBlank(message = "{validation.username.required}")
+    @Size(max = 255, message = "{validation.username.size}")
+    private String username;
 
-        @Schema(example = "Ivan Petrov")
-        @NotBlank(message = "Full name is required")
-        @Size(max = 255, message = "Full name must be at most 255 characters")
-        String fullName
-) {
+    @Schema(example = "StrongPassword1")
+    @NotBlank(message = "{validation.password.required}")
+    @Size(min = 8, max = 72, message = "{validation.password.size}")
+    private String password;
+
+    @Schema(example = "Ivan Petrov")
+    @NotBlank(message = "{validation.full-name.required}")
+    @Size(max = 255, message = "{validation.full-name.size}")
+    private String fullName;
 }

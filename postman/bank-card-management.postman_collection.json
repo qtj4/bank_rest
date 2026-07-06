@@ -1,0 +1,341 @@
+{
+  "info": {
+    "name": "Bank Card Management",
+    "_postman_id": "6ec62f3e-2f2b-4d94-a98d-bankcards0001",
+    "description": "End-to-end collection for Bank Card Management. Run from top to bottom after starting the app. Scripts store admin/user JWTs and created entity IDs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('runSuffix')) {",
+          "  const suffix = Date.now().toString();",
+          "  pm.collectionVariables.set('runSuffix', suffix);",
+          "  pm.collectionVariables.set('testUsername', 'postman_user_' + suffix);",
+          "  pm.collectionVariables.set('testFullName', 'Postman User ' + suffix);",
+          "  pm.collectionVariables.set('testPassword', 'UserPass123');",
+          "  pm.collectionVariables.set('cardNumber1', '411111111111' + suffix.slice(-4));",
+          "  pm.collectionVariables.set('cardNumber2', '422222222222' + suffix.slice(-4));",
+          "  pm.collectionVariables.set('futureExpirationDate', new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));",
+          "  pm.collectionVariables.set('pastExpirationDate', '2000-01-01');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "adminUsername", "value": "admin" },
+    { "key": "adminPassword", "value": "admin123" },
+    { "key": "testUsername", "value": "" },
+    { "key": "testPassword", "value": "" },
+    { "key": "testFullName", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "userToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "card1Id", "value": "" },
+    { "key": "card2Id", "value": "" },
+    { "key": "transferId", "value": "" },
+    { "key": "futureExpirationDate", "value": "" },
+    { "key": "pastExpirationDate", "value": "2000-01-01" },
+    { "key": "cardNumber1", "value": "" },
+    { "key": "cardNumber2", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "request": { "method": "GET", "url": "{{baseUrl}}/actuator/health" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('health is up', () => pm.response.to.have.status(200));"] } }]
+    },
+    {
+      "name": "01 Auth - Login Admin",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}" },
+        "url": "{{baseUrl}}/api/v1/auth/login"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('admin login returns 200', () => pm.response.to.have.status(200));",
+        "const json = pm.response.json();",
+        "pm.test('admin token exists', () => pm.expect(json.token).to.be.a('string').and.not.empty);",
+        "pm.collectionVariables.set('adminToken', json.token);"
+      ] } }]
+    },
+    {
+      "name": "02 Admin Users - Create USER",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{testPassword}}\",\n  \"fullName\": \"{{testFullName}}\",\n  \"role\": \"USER\",\n  \"enabled\": true\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/users"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('user created', () => pm.response.to.have.status(201));",
+        "const json = pm.response.json();",
+        "pm.collectionVariables.set('userId', json.id);",
+        "pm.test('role is USER', () => pm.expect(json.role).to.eql('USER'));"
+      ] } }]
+    },
+    {
+      "name": "03 Auth - Login Created User",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{testPassword}}\"\n}" },
+        "url": "{{baseUrl}}/api/v1/auth/login"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('user login returns 200', () => pm.response.to.have.status(200));",
+        "const json = pm.response.json();",
+        "pm.collectionVariables.set('userToken', json.token);"
+      ] } }]
+    },
+    {
+      "name": "04 Cards - Admin Create Card 1",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"number\": \"{{cardNumber1}}\",\n  \"ownerId\": \"{{userId}}\",\n  \"expirationDate\": \"{{futureExpirationDate}}\",\n  \"balance\": 1000.00\n}" },
+        "url": "{{baseUrl}}/api/v1/cards"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('card 1 created', () => pm.response.to.have.status(201));",
+        "const json = pm.response.json();",
+        "pm.collectionVariables.set('card1Id', json.id);",
+        "pm.test('masked number only', () => { pm.expect(json.maskedNumber).to.match(/^\\*\\*\\*\\* \\*\\*\\*\\* \\*\\*\\*\\* \\d{4}$/); pm.expect(JSON.stringify(json)).to.not.include(pm.collectionVariables.get('cardNumber1')); });"
+      ] } }]
+    },
+    {
+      "name": "05 Cards - Admin Create Card 2",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"number\": \"{{cardNumber2}}\",\n  \"ownerId\": \"{{userId}}\",\n  \"expirationDate\": \"{{futureExpirationDate}}\",\n  \"balance\": 100.00\n}" },
+        "url": "{{baseUrl}}/api/v1/cards"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('card 2 created', () => pm.response.to.have.status(201));",
+        "const json = pm.response.json();",
+        "pm.collectionVariables.set('card2Id', json.id);"
+      ] } }]
+    },
+    {
+      "name": "06 Cards - User List My Cards",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/cards/my?page=0&size=10&status=ACTIVE"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('my cards listed', () => pm.response.to.have.status(200));",
+        "pm.test('contains content', () => pm.expect(pm.response.json().content.length).to.be.greaterThan(0));"
+      ] } }]
+    },
+    {
+      "name": "07 Cards - User Get Own Balance",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/cards/{{card1Id}}/balance"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('balance returned', () => pm.response.to.have.status(200));",
+        "pm.test('balance is numeric', () => pm.expect(pm.response.json().balance).to.be.a('number'));"
+      ] } }]
+    },
+    {
+      "name": "08 Transfers - User Transfer Success",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"fromCardId\": \"{{card1Id}}\",\n  \"toCardId\": \"{{card2Id}}\",\n  \"amount\": 25.50,\n  \"description\": \"Postman successful transfer\"\n}" },
+        "url": "{{baseUrl}}/api/v1/transfers"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('transfer created', () => pm.response.to.have.status(201));",
+        "const json = pm.response.json();",
+        "pm.collectionVariables.set('transferId', json.id);",
+        "pm.test('masked cards in response', () => { pm.expect(json.fromMaskedNumber).to.include('****'); pm.expect(json.toMaskedNumber).to.include('****'); });"
+      ] } }]
+    },
+    {
+      "name": "09 Transfers - User List My Transfers",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/transfers/my?page=0&size=10&from=2020-01-01T00:00:00&to=2099-12-31T23:59:59"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('my transfers listed', () => pm.response.to.have.status(200));"] } }]
+    },
+    {
+      "name": "10 Transfers - User Get My Transfer",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/transfers/{{transferId}}"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('transfer returned', () => pm.response.to.have.status(200));"] } }]
+    },
+    {
+      "name": "11 Cards - User Request Block",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/cards/{{card2Id}}/block-request"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('block requested', () => pm.response.to.have.status(200));",
+        "pm.test('flag true', () => pm.expect(pm.response.json().blockRequested).to.eql(true));"
+      ] } }]
+    },
+    {
+      "name": "12 Cards - Admin Block Card",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/v1/cards/{{card2Id}}/block"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('card blocked', () => pm.response.to.have.status(200));",
+        "pm.test('status BLOCKED', () => pm.expect(pm.response.json().status).to.eql('BLOCKED'));"
+      ] } }]
+    },
+    {
+      "name": "13 Negative - Transfer With Blocked Card",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"fromCardId\": \"{{card1Id}}\",\n  \"toCardId\": \"{{card2Id}}\",\n  \"amount\": 1.00\n}" },
+        "url": "{{baseUrl}}/api/v1/transfers"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('blocked transfer rejected', () => pm.response.to.have.status(400));",
+        "pm.test('business error', () => pm.expect(pm.response.json().error).to.eql('BUSINESS_RULE_VIOLATION'));"
+      ] } }]
+    },
+    {
+      "name": "14 Cards - Admin Activate Card",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/v1/cards/{{card2Id}}/activate"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('card activated', () => pm.response.to.have.status(200));"] } }]
+    },
+    {
+      "name": "15 Negative - Missing Auth",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/cards/my" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('missing auth returns 401', () => pm.response.to.have.status(401));",
+        "pm.test('unauthorized code', () => pm.expect(pm.response.json().error).to.eql('UNAUTHORIZED'));"
+      ] } }]
+    },
+    {
+      "name": "16 Negative - USER Cannot Create Card",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"number\": \"4333333333333333\",\n  \"ownerId\": \"{{userId}}\",\n  \"expirationDate\": \"{{futureExpirationDate}}\",\n  \"balance\": 10.00\n}" },
+        "url": "{{baseUrl}}/api/v1/cards"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('forbidden', () => pm.response.to.have.status(403));"] } }]
+    },
+    {
+      "name": "17 Negative - Duplicate Card Number",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"number\": \"{{cardNumber1}}\",\n  \"ownerId\": \"{{userId}}\",\n  \"expirationDate\": \"{{futureExpirationDate}}\",\n  \"balance\": 10.00\n}" },
+        "url": "{{baseUrl}}/api/v1/cards"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('duplicate rejected', () => pm.response.to.have.status(409));"] } }]
+    },
+    {
+      "name": "18 Negative - Validation Error RU",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept-Language", "value": "ru" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"number\": \"123\",\n  \"ownerId\": \"{{userId}}\",\n  \"expirationDate\": \"{{futureExpirationDate}}\",\n  \"balance\": -1\n}" },
+        "url": "{{baseUrl}}/api/v1/cards"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('validation rejected', () => pm.response.to.have.status(400));",
+        "const json = pm.response.json();",
+        "pm.test('field errors exist', () => { pm.expect(json.error).to.eql('VALIDATION_ERROR'); pm.expect(json.fieldErrors.number).to.exist; pm.expect(json.fieldErrors.balance).to.exist; });"
+      ] } }]
+    },
+    {
+      "name": "19 Negative - Create Expired Card",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"number\": \"4444444444444444\",\n  \"ownerId\": \"{{userId}}\",\n  \"expirationDate\": \"{{pastExpirationDate}}\",\n  \"balance\": 10.00\n}" },
+        "url": "{{baseUrl}}/api/v1/cards"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('expired card rejected', () => pm.response.to.have.status(400));"] } }]
+    },
+    {
+      "name": "20 Negative - Insufficient Balance",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"fromCardId\": \"{{card1Id}}\",\n  \"toCardId\": \"{{card2Id}}\",\n  \"amount\": 999999.00\n}" },
+        "url": "{{baseUrl}}/api/v1/transfers"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('insufficient balance rejected', () => pm.response.to.have.status(400));"] } }]
+    },
+    {
+      "name": "21 Negative - Invalid Date Range",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/transfers/my?from=2099-01-01T00:00:00&to=2020-01-01T00:00:00"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('invalid range rejected', () => pm.response.to.have.status(400));"] } }]
+    },
+    {
+      "name": "22 Admin Transfers - List All",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/admin/transfers?page=0&size=10&userId={{userId}}"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin transfer list available', () => pm.response.to.have.status(200));"] } }]
+    },
+    {
+      "name": "23 Cards - Admin Soft Delete Card 2",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/v1/cards/{{card2Id}}"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('card soft deleted', () => pm.response.to.have.status(204));"] } }]
+    },
+    {
+      "name": "24 Admin Users - Soft Delete User",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/v1/admin/users/{{userId}}"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('user soft deleted/disabled', () => pm.response.to.have.status(204));"] } }]
+    }
+  ]
+}

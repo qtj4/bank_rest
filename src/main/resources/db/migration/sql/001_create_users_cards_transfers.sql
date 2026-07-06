@@ -11,6 +11,8 @@ create table app_user
     enabled boolean not null default true,
     created_at timestamp without time zone not null,
     updated_at timestamp without time zone not null,
+    deleted_at timestamp without time zone,
+    deleted_by uuid,
     constraint app_user_role_check check (role in ('ADMIN', 'USER'))
 );
 
@@ -30,6 +32,8 @@ create table card
     block_requested_at timestamp without time zone,
     created_at timestamp without time zone not null,
     updated_at timestamp without time zone not null,
+    deleted_at timestamp without time zone,
+    deleted_by uuid,
     constraint card_owner_fk foreign key (owner_id) references app_user (id),
     constraint card_status_check check (status in ('ACTIVE', 'BLOCKED', 'EXPIRED')),
     constraint card_balance_non_negative_check check (balance >= 0),
@@ -50,6 +54,8 @@ create table card_transfer
     description varchar(255),
     created_at timestamp without time zone not null,
     updated_at timestamp without time zone not null,
+    deleted_at timestamp without time zone,
+    deleted_by uuid,
     constraint card_transfer_from_card_fk foreign key (from_card_id) references card (id),
     constraint card_transfer_to_card_fk foreign key (to_card_id) references card (id),
     constraint card_transfer_amount_positive_check check (amount > 0),

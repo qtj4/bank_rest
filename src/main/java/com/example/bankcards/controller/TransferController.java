@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,12 +35,14 @@ public class TransferController {
     @PostMapping("/api/v1/transfers")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Transfer money between current user's cards")
+    @PreAuthorize("hasPermission(null, @permission.TRANSFER_CREATE)")
     public TransferResponse transfer(@Valid @RequestBody TransferRequest request) {
         return transferService.transfer(request);
     }
 
     @GetMapping("/api/v1/transfers/my")
     @Operation(summary = "List current user's transfers")
+    @PreAuthorize("hasPermission(null, @permission.TRANSFER_VIEW_OWN)")
     public Page<TransferResponse> listMy(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
@@ -50,12 +53,14 @@ public class TransferController {
 
     @GetMapping("/api/v1/transfers/{id}")
     @Operation(summary = "Get current user's transfer")
+    @PreAuthorize("hasPermission(null, @permission.TRANSFER_VIEW_OWN)")
     public TransferResponse getMy(@PathVariable UUID id) {
         return transferService.getMy(id);
     }
 
     @GetMapping("/api/v1/admin/transfers")
     @Operation(summary = "List all transfers as admin")
+    @PreAuthorize("hasPermission(null, @permission.TRANSFER_VIEW_ALL)")
     public Page<TransferResponse> listAll(
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,

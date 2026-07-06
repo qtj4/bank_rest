@@ -4,23 +4,31 @@ import com.example.bankcards.entity.enums.Role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public record UserCreateRequest(
-        @NotBlank(message = "Username is required")
-        @Size(max = 255, message = "Username must be at most 255 characters")
-        String username,
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserCreateRequest {
 
-        @NotBlank(message = "Password is required")
-        @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
-        String password,
+    @NotBlank(message = "{validation.username.required}")
+    @Size(max = 255, message = "{validation.username.size}")
+    private String username;
 
-        @NotBlank(message = "Full name is required")
-        @Size(max = 255, message = "Full name must be at most 255 characters")
-        String fullName,
+    @NotBlank(message = "{validation.password.required}")
+    @Size(min = 8, max = 72, message = "{validation.password.size}")
+    private String password;
 
-        @NotNull(message = "Role is required")
-        Role role,
+    @NotBlank(message = "{validation.full-name.required}")
+    @Size(max = 255, message = "{validation.full-name.size}")
+    private String fullName;
 
-        Boolean enabled
-) {
+    @NotNull(message = "{validation.role.required}")
+    private Role role;
+
+    private Boolean enabled;
 }

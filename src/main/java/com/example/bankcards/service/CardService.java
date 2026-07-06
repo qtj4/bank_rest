@@ -12,7 +12,6 @@ import com.example.bankcards.exception.ConflictException;
 import com.example.bankcards.exception.NotFoundException;
 import com.example.bankcards.mapper.CardMapper;
 import com.example.bankcards.repository.CardRepository;
-import com.example.bankcards.repository.TransferRepository;
 import com.example.bankcards.repository.spec.CardSpecifications;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,51 +28,51 @@ import org.springframework.transaction.annotation.Transactional;
 public class CardService {
 
     private final CardRepository cardRepository;
-    private final TransferRepository transferRepository;
     private final UserService userService;
     private final CurrentUserService currentUserService;
     private final CardCryptoService cardCryptoService;
     private final CardMapper cardMapper;
+    private final MessageService messageService;
 
     public CardService(
             CardRepository cardRepository,
-            TransferRepository transferRepository,
             UserService userService,
             CurrentUserService currentUserService,
             CardCryptoService cardCryptoService,
-            CardMapper cardMapper
+            CardMapper cardMapper,
+            MessageService messageService
     ) {
         this.cardRepository = cardRepository;
-        this.transferRepository = transferRepository;
         this.userService = userService;
         this.currentUserService = currentUserService;
         this.cardCryptoService = cardCryptoService;
         this.cardMapper = cardMapper;
+        this.messageService = messageService;
     }
 
     @Transactional
     public CardResponse create(CardCreateRequest request) {
-        if (request.expirationDate().isBefore(LocalDate.now())) {
-            throw new BusinessException("Expired cards cannot be created");
+        if (request.getExpirationDate().isBefore(LocalDate.now())) {
+            throw new BusinessException(messageService.get("business.card.create-expired"));
         }
-        String normalizedNumber = cardCryptoService.normalize(request.number());
+        String normalizedNumber = cardCryptoService.normalize(request.getNumber());
         String hash = cardCryptoService.hash(normalizedNumber);
         if (cardRepository.existsByNumberHash(hash)) {
-            throw new ConflictException("Card number already exists");
+            throw new ConflictException(messageService.get("business.card.duplicate"));
         }
-        User owner = userService.getEntity(request.ownerId());
+        User owner = userService.getEntity(request.getOwnerId());
         Card card = new Card();
         card.setEncryptedNumber(cardCryptoService.encrypt(normalizedNumber));
         card.setNumberHash(hash);
         card.setLastFourDigits(cardCryptoService.lastFourDigits(normalizedNumber));
         card.setOwner(owner);
-        card.setExpirationDate(request.expirationDate());
+        card.setExpirationDate(request.getExpirationDate());
         card.setStatus(CardStatus.ACTIVE);
-        card.setBalance(scaleMoney(request.balance()));
+        card.setBalance(scaleMoney(request.getBalance()));
         try {
             return cardMapper.toResponse(cardRepository.save(card));
         } catch (DataIntegrityViolationException exception) {
-            throw new ConflictException("Card number already exists");
+            throw new ConflictException(messageService.get("business.card.duplicate"));
         }
     }
 
@@ -85,6 +84,7 @@ public class CardService {
     @Transactional(readOnly = true)
     public Page<CardResponse> listAll(CardStatus status, UUID ownerId, String lastFourDigits, Pageable pageable) {
         Specification<Card> specification = Specification.allOf(
+                CardSpecifications.notDeleted(),
                 CardSpecifications.status(status),
                 CardSpecifications.ownerId(ownerId),
                 CardSpecifications.lastFourDigits(lastFourDigits)
@@ -96,6 +96,7 @@ public class CardService {
     public Page<CardResponse> listMy(CardStatus status, String lastFourDigits, Pageable pageable) {
         User currentUser = currentUserService.getCurrentUser();
         Specification<Card> specification = Specification.allOf(
+                CardSpecifications.notDeleted(),
                 CardSpecifications.ownerId(currentUser.getId()),
                 CardSpecifications.status(status),
                 CardSpecifications.lastFourDigits(lastFourDigits)
@@ -116,20 +117,20 @@ public class CardService {
     @Transactional
     public CardResponse update(UUID id, CardUpdateRequest request) {
         Card card = getEntity(id);
-        if (request.expirationDate() != null) {
-            if (request.expirationDate().isBefore(LocalDate.now())) {
-                throw new BusinessException("Expiration date cannot be in the past");
+        if (request.getExpirationDate() != null) {
+            if (request.getExpirationDate().isBefore(LocalDate.now())) {
+                throw new BusinessException(messageService.get("business.card.expiration-past"));
             }
-            card.setExpirationDate(request.expirationDate());
+            card.setExpirationDate(request.getExpirationDate());
         }
-        if (request.balance() != null) {
-            card.setBalance(scaleMoney(request.balance()));
+        if (request.getBalance() != null) {
+            card.setBalance(scaleMoney(request.getBalance()));
         }
-        if (request.status() != null) {
-            if (request.status() == CardStatus.ACTIVE && card.getExpirationDate().isBefore(LocalDate.now())) {
-                throw new BusinessException("Expired card cannot be activated");
+        if (request.getStatus() != null) {
+            if (request.getStatus() == CardStatus.ACTIVE && card.getExpirationDate().isBefore(LocalDate.now())) {
+                throw new BusinessException(messageService.get("business.card.activate-expired"));
             }
-            card.setStatus(request.status());
+            card.setStatus(request.getStatus());
         }
         return cardMapper.toResponse(card);
     }
@@ -147,7 +148,7 @@ public class CardService {
     public CardResponse activate(UUID id) {
         Card card = getEntity(id);
         if (card.getExpirationDate().isBefore(LocalDate.now())) {
-            throw new BusinessException("Expired card cannot be activated");
+            throw new BusinessException(messageService.get("business.card.activate-expired"));
         }
         card.setStatus(CardStatus.ACTIVE);
         card.setBlockRequested(false);
@@ -159,7 +160,7 @@ public class CardService {
     public CardResponse requestBlock(UUID id) {
         Card card = getOwnCard(id);
         if (card.getStatus() == CardStatus.BLOCKED) {
-            throw new BusinessException("Card is already blocked");
+            throw new BusinessException(messageService.get("business.card.already-blocked"));
         }
         card.setBlockRequested(true);
         card.setBlockRequestedAt(LocalDateTime.now());
@@ -169,24 +170,21 @@ public class CardService {
     @Transactional
     public void delete(UUID id) {
         Card card = getEntity(id);
-        if (transferRepository.existsByFromCardIdOrToCardId(id, id)) {
-            card.setStatus(CardStatus.BLOCKED);
-            return;
-        }
-        cardRepository.delete(card);
+        card.setStatus(CardStatus.BLOCKED);
+        card.markDeleted(currentUserService.getCurrentUser().getId());
     }
 
     Card getEntity(UUID id) {
-        return cardRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Card not found"));
+        return cardRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new NotFoundException(messageService.get("business.card.not-found")));
     }
 
     private Card getOwnCard(UUID id) {
         User currentUser = currentUserService.getCurrentUser();
-        Card card = cardRepository.findByIdAndOwnerId(id, currentUser.getId())
-                .orElseThrow(() -> new NotFoundException("Card not found"));
+        Card card = cardRepository.findByIdAndOwnerIdAndDeletedAtIsNull(id, currentUser.getId())
+                .orElseThrow(() -> new NotFoundException(messageService.get("business.card.not-found")));
         if (!card.getOwner().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedOperationException("Card belongs to another user");
+            throw new AccessDeniedOperationException(messageService.get("business.card.another-user"));
         }
         return card;
     }

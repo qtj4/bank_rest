@@ -2,16 +2,24 @@ package com.example.bankcards.dto.request;
 
 import com.example.bankcards.entity.enums.Role;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public record UserUpdateRequest(
-        @Size(max = 255, message = "Full name must be at most 255 characters")
-        String fullName,
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserUpdateRequest {
 
-        @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
-        String password,
+    @Size(max = 255, message = "{validation.full-name.size}")
+    private String fullName;
 
-        Role role,
+    @Size(min = 8, max = 72, message = "{validation.password.size}")
+    private String password;
 
-        Boolean enabled
-) {
+    private Role role;
+
+    private Boolean enabled;
 }

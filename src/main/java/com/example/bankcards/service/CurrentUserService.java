@@ -12,9 +12,11 @@ import org.springframework.stereotype.Service;
 public class CurrentUserService {
 
     private final UserRepository userRepository;
+    private final MessageService messageService;
 
-    public CurrentUserService(UserRepository userRepository) {
+    public CurrentUserService(UserRepository userRepository, MessageService messageService) {
         this.userRepository = userRepository;
+        this.messageService = messageService;
     }
 
     public User getCurrentUser() {
@@ -23,7 +25,7 @@ public class CurrentUserService {
         String username = principal instanceof UserDetails userDetails
                 ? userDetails.getUsername()
                 : String.valueOf(principal);
-        return userRepository.findByUsernameIgnoreCase(username)
-                .orElseThrow(() -> new NotFoundException("Authenticated user was not found"));
+        return userRepository.findByUsernameIgnoreCaseAndDeletedAtIsNull(username)
+                .orElseThrow(() -> new NotFoundException(messageService.get("business.user.authenticated-not-found")));
     }
 }

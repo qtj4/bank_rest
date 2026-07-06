@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,18 +38,21 @@ public class UserController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a user")
+    @PreAuthorize("hasPermission(null, @permission.USER_CREATE)")
     public UserResponse create(@Valid @RequestBody UserCreateRequest request) {
         return userService.create(request);
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a user by id")
+    @PreAuthorize("hasPermission(null, @permission.USER_VIEW)")
     public UserResponse get(@PathVariable UUID id) {
         return userService.get(id);
     }
 
     @GetMapping
     @Operation(summary = "List users")
+    @PreAuthorize("hasPermission(null, @permission.USER_VIEW)")
     public Page<UserResponse> list(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Role role,
@@ -60,6 +64,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a user")
+    @PreAuthorize("hasPermission(null, @permission.USER_UPDATE)")
     public UserResponse update(@PathVariable UUID id, @Valid @RequestBody UserUpdateRequest request) {
         return userService.update(id, request);
     }
@@ -67,6 +72,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Disable a user")
+    @PreAuthorize("hasPermission(null, @permission.USER_DELETE)")
     public void delete(@PathVariable UUID id) {
         userService.disable(id);
     }

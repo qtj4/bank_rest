@@ -3,27 +3,19 @@ package com.example.bankcards.mapper;
 import com.example.bankcards.dto.response.TransferResponse;
 import com.example.bankcards.entity.Transfer;
 import com.example.bankcards.service.CardCryptoService;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.springframework.beans.factory.annotation.Autowired;
 
-@Component
-public class TransferMapper {
+@Mapper(componentModel = "spring")
+public abstract class TransferMapper {
 
-    private final CardCryptoService cardCryptoService;
+    @Autowired
+    protected CardCryptoService cardCryptoService;
 
-    public TransferMapper(CardCryptoService cardCryptoService) {
-        this.cardCryptoService = cardCryptoService;
-    }
-
-    public TransferResponse toResponse(Transfer transfer) {
-        return new TransferResponse(
-                transfer.getId(),
-                transfer.getFromCard().getId(),
-                cardCryptoService.mask(transfer.getFromCard().getLastFourDigits()),
-                transfer.getToCard().getId(),
-                cardCryptoService.mask(transfer.getToCard().getLastFourDigits()),
-                transfer.getAmount(),
-                transfer.getDescription(),
-                transfer.getCreatedAt()
-        );
-    }
+    @Mapping(target = "fromCardId", source = "fromCard.id")
+    @Mapping(target = "fromMaskedNumber", expression = "java(cardCryptoService.mask(transfer.getFromCard().getLastFourDigits()))")
+    @Mapping(target = "toCardId", source = "toCard.id")
+    @Mapping(target = "toMaskedNumber", expression = "java(cardCryptoService.mask(transfer.getToCard().getLastFourDigits()))")
+    public abstract TransferResponse toResponse(Transfer transfer);
 }

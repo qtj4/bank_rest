@@ -23,6 +23,10 @@ public final class UserSpecifications {
         };
     }
 
+    public static Specification<User> notDeleted() {
+        return (root, query, builder) -> builder.isNull(root.get("deletedAt"));
+    }
+
     public static Specification<User> role(Role role) {
         return (root, query, builder) -> role == null
                 ? builder.conjunction()

@@ -8,9 +8,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.bankcards.handler.GlobalExceptionHandler;
+import com.example.bankcards.security.Permission;
 import com.example.bankcards.security.JwtService;
 import com.example.bankcards.security.SecurityConfig;
 import com.example.bankcards.security.UserDetailsServiceImpl;
+import com.example.bankcards.security.MethodSecurityConfig;
+import com.example.bankcards.security.PermissionEvaluatorImpl;
+import com.example.bankcards.service.MessageService;
 import com.example.bankcards.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -22,7 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = UserController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({SecurityConfig.class, MethodSecurityConfig.class, PermissionEvaluatorImpl.class, Permission.class, GlobalExceptionHandler.class})
 class SecurityControllerTest {
 
     @Autowired
@@ -36,6 +40,8 @@ class SecurityControllerTest {
     private UserDetailsServiceImpl userDetailsService;
     @MockBean
     private PasswordEncoder passwordEncoder;
+    @MockBean
+    private MessageService messageService;
 
     @Test
     void missingAuthReturns401() throws Exception {
@@ -54,7 +60,7 @@ class SecurityControllerTest {
     @Test
     void validationErrorReturnsFieldErrors() throws Exception {
         mockMvc.perform(post("/api/v1/admin/users")
-                        .with(user("admin").roles("ADMIN"))
+                        .with(user("admin").authorities(() -> Permission.USER_CREATE))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))

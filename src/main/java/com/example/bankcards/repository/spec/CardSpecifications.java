@@ -17,6 +17,10 @@ public final class CardSpecifications {
                 : builder.equal(root.get("owner").get("id"), ownerId);
     }
 
+    public static Specification<Card> notDeleted() {
+        return (root, query, builder) -> builder.isNull(root.get("deletedAt"));
+    }
+
     public static Specification<Card> status(CardStatus status) {
         return (root, query, builder) -> status == null
                 ? builder.conjunction()

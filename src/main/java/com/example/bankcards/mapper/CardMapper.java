@@ -3,29 +3,18 @@ package com.example.bankcards.mapper;
 import com.example.bankcards.dto.response.CardResponse;
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.service.CardCryptoService;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.springframework.beans.factory.annotation.Autowired;
 
-@Component
-public class CardMapper {
+@Mapper(componentModel = "spring")
+public abstract class CardMapper {
 
-    private final CardCryptoService cardCryptoService;
+    @Autowired
+    protected CardCryptoService cardCryptoService;
 
-    public CardMapper(CardCryptoService cardCryptoService) {
-        this.cardCryptoService = cardCryptoService;
-    }
-
-    public CardResponse toResponse(Card card) {
-        return new CardResponse(
-                card.getId(),
-                cardCryptoService.mask(card.getLastFourDigits()),
-                card.getOwner().getId(),
-                card.getOwner().getFullName(),
-                card.getExpirationDate(),
-                card.getStatus(),
-                card.getBalance(),
-                card.isBlockRequested(),
-                card.getCreatedAt(),
-                card.getUpdatedAt()
-        );
-    }
+    @Mapping(target = "maskedNumber", expression = "java(cardCryptoService.mask(card.getLastFourDigits()))")
+    @Mapping(target = "ownerId", source = "owner.id")
+    @Mapping(target = "ownerName", source = "owner.fullName")
+    public abstract CardResponse toResponse(Card card);
 }

@@ -36,43 +36,46 @@ public class TransferService {
     private final CardRepository cardRepository;
     private final CurrentUserService currentUserService;
     private final TransferMapper transferMapper;
+    private final MessageService messageService;
 
     public TransferService(
             TransferRepository transferRepository,
             CardRepository cardRepository,
             CurrentUserService currentUserService,
-            TransferMapper transferMapper
+            TransferMapper transferMapper,
+            MessageService messageService
     ) {
         this.transferRepository = transferRepository;
         this.cardRepository = cardRepository;
         this.currentUserService = currentUserService;
         this.transferMapper = transferMapper;
+        this.messageService = messageService;
     }
 
     @Transactional
     public TransferResponse transfer(TransferRequest request) {
-        if (request.fromCardId().equals(request.toCardId())) {
-            throw new BusinessException("Source and destination cards must be different");
+        if (request.getFromCardId().equals(request.getToCardId())) {
+            throw new BusinessException(messageService.get("business.transfer.same-card"));
         }
-        BigDecimal amount = scaleMoney(request.amount());
+        BigDecimal amount = scaleMoney(request.getAmount());
         if (amount.signum() <= 0) {
-            throw new BusinessException("Transfer amount must be positive");
+            throw new BusinessException(messageService.get("business.transfer.positive-amount"));
         }
 
         User currentUser = currentUserService.getCurrentUser();
-        Map<UUID, Card> lockedCards = lockCards(request.fromCardId(), request.toCardId());
-        Card fromCard = lockedCards.get(request.fromCardId());
-        Card toCard = lockedCards.get(request.toCardId());
+        Map<UUID, Card> lockedCards = lockCards(request.getFromCardId(), request.getToCardId());
+        Card fromCard = lockedCards.get(request.getFromCardId());
+        Card toCard = lockedCards.get(request.getToCardId());
         if (fromCard == null || toCard == null) {
-            throw new NotFoundException("Card not found");
+            throw new NotFoundException(messageService.get("business.card.not-found"));
         }
 
-        assertOwnedByCurrentUser(fromCard, currentUser, "Source card belongs to another user");
-        assertOwnedByCurrentUser(toCard, currentUser, "Destination card belongs to another user");
-        assertUsable(fromCard, "Source card cannot be used for transfers");
-        assertUsable(toCard, "Destination card cannot be used for transfers");
+        assertOwnedByCurrentUser(fromCard, currentUser, "business.transfer.source-another-user");
+        assertOwnedByCurrentUser(toCard, currentUser, "business.transfer.destination-another-user");
+        assertUsable(fromCard, "business.transfer.source-unusable");
+        assertUsable(toCard, "business.transfer.destination-unusable");
         if (fromCard.getBalance().compareTo(amount) < 0) {
-            throw new BusinessException("Insufficient balance");
+            throw new BusinessException(messageService.get("business.transfer.insufficient-balance"));
         }
 
         fromCard.setBalance(fromCard.getBalance().subtract(amount));
@@ -82,7 +85,7 @@ public class TransferService {
         transfer.setFromCard(fromCard);
         transfer.setToCard(toCard);
         transfer.setAmount(amount);
-        transfer.setDescription(request.description());
+        transfer.setDescription(request.getDescription());
         return transferMapper.toResponse(transferRepository.save(transfer));
     }
 
@@ -105,7 +108,7 @@ public class TransferService {
         boolean participant = transfer.getFromCard().getOwner().getId().equals(currentUser.getId())
                 || transfer.getToCard().getOwner().getId().equals(currentUser.getId());
         if (!participant) {
-            throw new AccessDeniedOperationException("Transfer belongs to another user");
+            throw new AccessDeniedOperationException(messageService.get("business.transfer.another-user"));
         }
         return transferMapper.toResponse(transfer);
     }
@@ -131,24 +134,24 @@ public class TransferService {
 
     private Transfer getEntity(UUID id) {
         return transferRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Transfer not found"));
+                .orElseThrow(() -> new NotFoundException(messageService.get("business.transfer.not-found")));
     }
 
-    private void assertOwnedByCurrentUser(Card card, User currentUser, String message) {
+    private void assertOwnedByCurrentUser(Card card, User currentUser, String messageKey) {
         if (!card.getOwner().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedOperationException(message);
+            throw new AccessDeniedOperationException(messageService.get(messageKey));
         }
     }
 
-    private void assertUsable(Card card, String message) {
+    private void assertUsable(Card card, String messageKey) {
         if (card.getStatus() != CardStatus.ACTIVE || card.getExpirationDate().isBefore(LocalDate.now())) {
-            throw new BusinessException(message);
+            throw new BusinessException(messageService.get(messageKey));
         }
     }
 
     private void validateDateRange(LocalDateTime from, LocalDateTime to) {
         if (from != null && to != null && from.isAfter(to)) {
-            throw new BusinessException("Date range start must be before or equal to range end");
+            throw new BusinessException(messageService.get("business.transfer.invalid-date-range"));
         }
     }
 

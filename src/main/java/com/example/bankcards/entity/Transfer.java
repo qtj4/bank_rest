@@ -7,7 +7,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@Getter
+@Setter
+@NoArgsConstructor
 @Entity
 @Table(name = "card_transfer")
 public class Transfer extends BaseEntity {
@@ -25,36 +31,4 @@ public class Transfer extends BaseEntity {
 
     @Column(name = "description")
     private String description;
-
-    public Card getFromCard() {
-        return fromCard;
-    }
-
-    public void setFromCard(Card fromCard) {
-        this.fromCard = fromCard;
-    }
-
-    public Card getToCard() {
-        return toCard;
-    }
-
-    public void setToCard(Card toCard) {
-        this.toCard = toCard;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
 }

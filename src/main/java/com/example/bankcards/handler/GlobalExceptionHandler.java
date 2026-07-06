@@ -5,6 +5,7 @@ import com.example.bankcards.exception.AccessDeniedOperationException;
 import com.example.bankcards.exception.BusinessException;
 import com.example.bankcards.exception.ConflictException;
 import com.example.bankcards.exception.NotFoundException;
+import com.example.bankcards.service.MessageService;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,6 +23,12 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private final MessageService messageService;
+
+    public GlobalExceptionHandler(MessageService messageService) {
+        this.messageService = messageService;
+    }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException exception) {
@@ -45,7 +52,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
     public ResponseEntity<ErrorResponse> handleAuthentication(RuntimeException exception) {
-        return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid username or password");
+        return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", messageService.get("error.auth.invalid"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -54,7 +61,7 @@ public class GlobalExceptionHandler {
         exception.getBindingResult().getFieldErrors().forEach(error ->
                 fieldErrors.put(error.getField(), error.getDefaultMessage()));
         return ResponseEntity.badRequest()
-                .body(ErrorResponse.validation("Request validation failed", fieldErrors));
+                .body(ErrorResponse.validation(messageService.get("error.validation.failed"), fieldErrors));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -63,22 +70,22 @@ public class GlobalExceptionHandler {
         exception.getConstraintViolations().forEach(violation ->
                 fieldErrors.put(violation.getPropertyPath().toString(), violation.getMessage()));
         return ResponseEntity.badRequest()
-                .body(ErrorResponse.validation("Request validation failed", fieldErrors));
+                .body(ErrorResponse.validation(messageService.get("error.validation.failed"), fieldErrors));
     }
 
     @ExceptionHandler({IllegalArgumentException.class, MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception exception) {
-        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request contains invalid values");
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", messageService.get("error.validation.invalid-values"));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity() {
-        return error(HttpStatus.CONFLICT, "DATA_INTEGRITY_ERROR", "Request conflicts with existing data");
+        return error(HttpStatus.CONFLICT, "DATA_INTEGRITY_ERROR", messageService.get("error.data-integrity"));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected() {
-        return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "Unexpected server error");
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", messageService.get("error.unexpected"));
     }
 
     private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message) {

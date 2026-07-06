@@ -25,29 +25,39 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final CurrentUserService currentUserService;
+    private final MessageService messageService;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper) {
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            UserMapper userMapper,
+            CurrentUserService currentUserService,
+            MessageService messageService
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
+        this.currentUserService = currentUserService;
+        this.messageService = messageService;
     }
 
     @Transactional
     public UserResponse create(UserCreateRequest request) {
-        String username = request.username().trim();
+        String username = request.getUsername().trim();
         if (userRepository.existsByUsernameIgnoreCase(username)) {
-            throw new ConflictException("Username is already taken");
+            throw new ConflictException(messageService.get("business.username.taken"));
         }
         User user = new User();
         user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(request.password()));
-        user.setFullName(request.fullName().trim());
-        user.setRole(request.role());
-        user.setEnabled(request.enabled() == null || request.enabled());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setFullName(request.getFullName().trim());
+        user.setRole(request.getRole());
+        user.setEnabled(request.getEnabled() == null || request.getEnabled());
         try {
             return userMapper.toResponse(userRepository.save(user));
         } catch (DataIntegrityViolationException exception) {
-            throw new ConflictException("Username is already taken");
+            throw new ConflictException(messageService.get("business.username.taken"));
         }
     }
 
@@ -59,6 +69,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public Page<UserResponse> list(String search, Role role, Boolean enabled, Pageable pageable) {
         Specification<User> specification = Specification.allOf(
+                UserSpecifications.notDeleted(),
                 UserSpecifications.search(search),
                 UserSpecifications.role(role),
                 UserSpecifications.enabled(enabled)
@@ -69,17 +80,17 @@ public class UserService {
     @Transactional
     public UserResponse update(UUID id, UserUpdateRequest request) {
         User user = getEntity(id);
-        if (request.fullName() != null) {
-            user.setFullName(request.fullName().trim());
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName().trim());
         }
-        if (request.password() != null) {
-            user.setPassword(passwordEncoder.encode(request.password()));
+        if (request.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
-        if (request.role() != null) {
-            user.setRole(request.role());
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
         }
-        if (request.enabled() != null) {
-            user.setEnabled(request.enabled());
+        if (request.getEnabled() != null) {
+            user.setEnabled(request.getEnabled());
         }
         return userMapper.toResponse(user);
     }
@@ -88,10 +99,11 @@ public class UserService {
     public void disable(UUID id) {
         User user = getEntity(id);
         user.setEnabled(false);
+        user.markDeleted(currentUserService.getCurrentUser().getId());
     }
 
     public User getEntity(UUID id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        return userRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new NotFoundException(messageService.get("business.user.not-found")));
     }
 }

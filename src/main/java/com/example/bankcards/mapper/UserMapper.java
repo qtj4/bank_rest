@@ -2,20 +2,10 @@ package com.example.bankcards.mapper;
 
 import com.example.bankcards.dto.response.UserResponse;
 import com.example.bankcards.entity.User;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
 
-@Component
-public class UserMapper {
+@Mapper(componentModel = "spring")
+public interface UserMapper {
 
-    public UserResponse toResponse(User user) {
-        return new UserResponse(
-                user.getId(),
-                user.getUsername(),
-                user.getFullName(),
-                user.getRole(),
-                user.isEnabled(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
-    }
+    UserResponse toResponse(User user);
 }

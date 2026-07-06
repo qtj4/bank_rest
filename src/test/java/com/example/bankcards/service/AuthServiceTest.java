@@ -13,6 +13,7 @@ import com.example.bankcards.entity.enums.Role;
 import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.security.JwtService;
 import java.util.Optional;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -41,7 +44,18 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, passwordEncoder, authenticationManager, jwtService);
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultLocale(Locale.ENGLISH);
+        messageSource.setFallbackToSystemLocale(false);
+        authService = new AuthService(
+                userRepository,
+                passwordEncoder,
+                authenticationManager,
+                jwtService,
+                new MessageService(messageSource)
+        );
     }
 
     @Test
@@ -68,12 +82,12 @@ class AuthServiceTest {
         user.setId(UUID.randomUUID());
         user.setUsername("ivan");
         user.setRole(Role.USER);
-        when(userRepository.findByUsernameIgnoreCase("ivan")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameIgnoreCaseAndDeletedAtIsNull("ivan")).thenReturn(Optional.of(user));
         when(jwtService.generateToken(user)).thenReturn("jwt");
 
         var response = authService.login(new LoginRequest("ivan", "StrongPassword1"));
 
-        assertThat(response.token()).isEqualTo("jwt");
+        assertThat(response.getToken()).isEqualTo("jwt");
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     }
 

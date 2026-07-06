@@ -17,9 +17,9 @@ import com.example.bankcards.exception.ConflictException;
 import com.example.bankcards.exception.NotFoundException;
 import com.example.bankcards.mapper.CardMapper;
 import com.example.bankcards.repository.CardRepository;
-import com.example.bankcards.repository.TransferRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +28,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 @ExtendWith(MockitoExtension.class)
 class CardServiceTest {
@@ -35,27 +37,32 @@ class CardServiceTest {
     @Mock
     private CardRepository cardRepository;
     @Mock
-    private TransferRepository transferRepository;
-    @Mock
     private UserService userService;
     @Mock
     private CurrentUserService currentUserService;
 
     private CardCryptoService cardCryptoService;
     private CardService cardService;
+    private MessageService messageService;
     private User owner;
 
     @BeforeEach
     void setUp() {
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
         cardCryptoService = new CardCryptoService("unit-test-card-secret");
         cardCryptoService.init();
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultLocale(Locale.ENGLISH);
+        messageSource.setFallbackToSystemLocale(false);
+        messageService = new MessageService(messageSource);
         cardService = new CardService(
                 cardRepository,
-                transferRepository,
                 userService,
                 currentUserService,
                 cardCryptoService,
-                new CardMapper(cardCryptoService)
+                testCardMapper(),
+                messageService
         );
         owner = user(UUID.randomUUID());
     }
@@ -73,8 +80,8 @@ class CardServiceTest {
 
         CardResponse response = cardService.create(request);
 
-        assertThat(response.maskedNumber()).isEqualTo("**** **** **** 3456");
-        assertThat(response.balance()).isEqualByComparingTo("100.00");
+        assertThat(response.getMaskedNumber()).isEqualTo("**** **** **** 3456");
+        assertThat(response.getBalance()).isEqualByComparingTo("100.00");
         ArgumentCaptor<Card> captor = ArgumentCaptor.forClass(Card.class);
         verify(cardRepository).save(captor.capture());
         assertThat(captor.getValue().getEncryptedNumber()).doesNotContain("1234567890123456");
@@ -100,18 +107,18 @@ class CardServiceTest {
     void userCanSeeOwnCard() {
         Card card = card(owner, CardStatus.ACTIVE);
         when(currentUserService.getCurrentUser()).thenReturn(owner);
-        when(cardRepository.findByIdAndOwnerId(card.getId(), owner.getId())).thenReturn(Optional.of(card));
+        when(cardRepository.findByIdAndOwnerIdAndDeletedAtIsNull(card.getId(), owner.getId())).thenReturn(Optional.of(card));
 
         CardResponse response = cardService.getMy(card.getId());
 
-        assertThat(response.id()).isEqualTo(card.getId());
+        assertThat(response.getId()).isEqualTo(card.getId());
     }
 
     @Test
     void userCannotSeeAnotherUsersCard() {
         UUID cardId = UUID.randomUUID();
         when(currentUserService.getCurrentUser()).thenReturn(owner);
-        when(cardRepository.findByIdAndOwnerId(cardId, owner.getId())).thenReturn(Optional.empty());
+        when(cardRepository.findByIdAndOwnerIdAndDeletedAtIsNull(cardId, owner.getId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cardService.getMy(cardId)).isInstanceOf(NotFoundException.class);
     }
@@ -120,11 +127,11 @@ class CardServiceTest {
     void userCanRequestBlockForOwnCard() {
         Card card = card(owner, CardStatus.ACTIVE);
         when(currentUserService.getCurrentUser()).thenReturn(owner);
-        when(cardRepository.findByIdAndOwnerId(card.getId(), owner.getId())).thenReturn(Optional.of(card));
+        when(cardRepository.findByIdAndOwnerIdAndDeletedAtIsNull(card.getId(), owner.getId())).thenReturn(Optional.of(card));
 
         CardResponse response = cardService.requestBlock(card.getId());
 
-        assertThat(response.blockRequested()).isTrue();
+        assertThat(response.isBlockRequested()).isTrue();
         assertThat(card.getBlockRequestedAt()).isNotNull();
     }
 
@@ -132,29 +139,29 @@ class CardServiceTest {
     void adminBlocksCard() {
         Card card = card(owner, CardStatus.ACTIVE);
         card.setBlockRequested(true);
-        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(cardRepository.findByIdAndDeletedAtIsNull(card.getId())).thenReturn(Optional.of(card));
 
         CardResponse response = cardService.block(card.getId());
 
-        assertThat(response.status()).isEqualTo(CardStatus.BLOCKED);
-        assertThat(response.blockRequested()).isFalse();
+        assertThat(response.getStatus()).isEqualTo(CardStatus.BLOCKED);
+        assertThat(response.isBlockRequested()).isFalse();
     }
 
     @Test
     void adminActivatesBlockedNonExpiredCard() {
         Card card = card(owner, CardStatus.BLOCKED);
-        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(cardRepository.findByIdAndDeletedAtIsNull(card.getId())).thenReturn(Optional.of(card));
 
         CardResponse response = cardService.activate(card.getId());
 
-        assertThat(response.status()).isEqualTo(CardStatus.ACTIVE);
+        assertThat(response.getStatus()).isEqualTo(CardStatus.ACTIVE);
     }
 
     @Test
     void expiredCardCannotBeActivated() {
         Card card = card(owner, CardStatus.BLOCKED);
         card.setExpirationDate(LocalDate.now().minusDays(1));
-        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(cardRepository.findByIdAndDeletedAtIsNull(card.getId())).thenReturn(Optional.of(card));
 
         assertThatThrownBy(() -> cardService.activate(card.getId()))
                 .isInstanceOf(BusinessException.class)
@@ -182,5 +189,27 @@ class CardServiceTest {
         card.setStatus(status);
         card.setBalance(new BigDecimal("100.00"));
         return card;
+    }
+
+    private CardMapper testCardMapper() {
+        return new CardMapper() {
+            @Override
+            public CardResponse toResponse(Card card) {
+                return CardResponse.builder()
+                        .id(card.getId())
+                        .maskedNumber(CardServiceTest.this.cardCryptoService.mask(card.getLastFourDigits()))
+                        .ownerId(card.getOwner().getId())
+                        .ownerName(card.getOwner().getFullName())
+                        .expirationDate(card.getExpirationDate())
+                        .status(card.getStatus())
+                        .balance(card.getBalance())
+                        .blockRequested(card.isBlockRequested())
+                        .createdAt(card.getCreatedAt())
+                        .updatedAt(card.getUpdatedAt())
+                        .deletedAt(card.getDeletedAt())
+                        .deletedBy(card.getDeletedBy())
+                        .build();
+            }
+        };
     }
 }

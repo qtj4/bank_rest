@@ -20,7 +20,11 @@ public interface CardRepository extends JpaRepository<Card, UUID>, JpaSpecificat
 
     Optional<Card> findByIdAndOwnerId(UUID id, UUID ownerId);
 
+    Optional<Card> findByIdAndDeletedAtIsNull(UUID id);
+
+    Optional<Card> findByIdAndOwnerIdAndDeletedAtIsNull(UUID id, UUID ownerId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select c from Card c join fetch c.owner where c.id in :ids order by c.id")
+    @Query("select c from Card c join fetch c.owner where c.id in :ids and c.deletedAt is null order by c.id")
     List<Card> findAllByIdWithWriteLock(@Param("ids") Collection<UUID> ids);
 }

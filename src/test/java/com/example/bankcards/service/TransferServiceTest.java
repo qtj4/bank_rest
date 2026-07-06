@@ -20,12 +20,15 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 @ExtendWith(MockitoExtension.class)
 class TransferServiceTest {
@@ -38,19 +41,27 @@ class TransferServiceTest {
     private CurrentUserService currentUserService;
 
     private TransferService transferService;
+    private MessageService messageService;
     private User owner;
     private Card fromCard;
     private Card toCard;
 
     @BeforeEach
     void setUp() {
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
         CardCryptoService cardCryptoService = new CardCryptoService("unit-test-card-secret");
         cardCryptoService.init();
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultLocale(Locale.ENGLISH);
+        messageSource.setFallbackToSystemLocale(false);
+        messageService = new MessageService(messageSource);
         transferService = new TransferService(
                 transferRepository,
                 cardRepository,
                 currentUserService,
-                new TransferMapper(cardCryptoService)
+                testTransferMapper(cardCryptoService),
+                messageService
         );
         owner = user(UUID.randomUUID());
         fromCard = card(owner, new BigDecimal("100.00"), CardStatus.ACTIVE);
@@ -173,5 +184,24 @@ class TransferServiceTest {
         card.setStatus(status);
         card.setBalance(balance);
         return card;
+    }
+
+    private TransferMapper testTransferMapper(CardCryptoService cardCryptoService) {
+        CardCryptoService crypto = cardCryptoService;
+        return new TransferMapper() {
+            @Override
+            public com.example.bankcards.dto.response.TransferResponse toResponse(Transfer transfer) {
+                return com.example.bankcards.dto.response.TransferResponse.builder()
+                        .id(transfer.getId())
+                        .fromCardId(transfer.getFromCard().getId())
+                        .fromMaskedNumber(crypto.mask(transfer.getFromCard().getLastFourDigits()))
+                        .toCardId(transfer.getToCard().getId())
+                        .toMaskedNumber(crypto.mask(transfer.getToCard().getLastFourDigits()))
+                        .amount(transfer.getAmount())
+                        .description(transfer.getDescription())
+                        .createdAt(transfer.getCreatedAt())
+                        .build();
+            }
+        };
     }
 }
