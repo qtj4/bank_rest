@@ -7,6 +7,7 @@ import com.example.bankcards.entity.Transfer;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.entity.enums.CardStatus;
 import com.example.bankcards.exception.AccessDeniedOperationException;
+import com.example.bankcards.exception.BusinessErrorCode;
 import com.example.bankcards.exception.BusinessException;
 import com.example.bankcards.exception.NotFoundException;
 import com.example.bankcards.mapper.TransferMapper;
@@ -26,11 +27,15 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TransferService {
+
+    private static final Logger log = LoggerFactory.getLogger(TransferService.class);
 
     private final TransferRepository transferRepository;
     private final CardRepository cardRepository;
@@ -55,11 +60,17 @@ public class TransferService {
     @Transactional
     public TransferResponse transfer(TransferRequest request) {
         if (request.getFromCardId().equals(request.getToCardId())) {
-            throw new BusinessException(messageService.get("business.transfer.same-card"));
+            throw new BusinessException(
+                    BusinessErrorCode.SAME_CARD_TRANSFER,
+                    messageService.get("business.transfer.same-card")
+            );
         }
         BigDecimal amount = scaleMoney(request.getAmount());
         if (amount.signum() <= 0) {
-            throw new BusinessException(messageService.get("business.transfer.positive-amount"));
+            throw new BusinessException(
+                    BusinessErrorCode.INVALID_TRANSFER_AMOUNT,
+                    messageService.get("business.transfer.positive-amount")
+            );
         }
 
         User currentUser = currentUserService.getCurrentUser();
@@ -75,7 +86,10 @@ public class TransferService {
         assertUsable(fromCard, "business.transfer.source-unusable");
         assertUsable(toCard, "business.transfer.destination-unusable");
         if (fromCard.getBalance().compareTo(amount) < 0) {
-            throw new BusinessException(messageService.get("business.transfer.insufficient-balance"));
+            throw new BusinessException(
+                    BusinessErrorCode.INSUFFICIENT_FUNDS,
+                    messageService.get("business.transfer.insufficient-balance")
+            );
         }
 
         fromCard.setBalance(fromCard.getBalance().subtract(amount));
@@ -86,7 +100,15 @@ public class TransferService {
         transfer.setToCard(toCard);
         transfer.setAmount(amount);
         transfer.setDescription(request.getDescription());
-        return transferMapper.toResponse(transferRepository.save(transfer));
+        Transfer saved = transferRepository.save(transfer);
+        log.info(
+                "transfer_created transferId={} userId={} fromCardId={} toCardId={}",
+                saved.getId(),
+                currentUser.getId(),
+                fromCard.getId(),
+                toCard.getId()
+        );
+        return transferMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -133,7 +155,7 @@ public class TransferService {
     }
 
     private Transfer getEntity(UUID id) {
-        return transferRepository.findById(id)
+        return transferRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new NotFoundException(messageService.get("business.transfer.not-found")));
     }
 
@@ -145,17 +167,29 @@ public class TransferService {
 
     private void assertUsable(Card card, String messageKey) {
         if (card.getStatus() != CardStatus.ACTIVE || card.getExpirationDate().isBefore(LocalDate.now())) {
-            throw new BusinessException(messageService.get(messageKey));
+            String code = card.getExpirationDate().isBefore(LocalDate.now())
+                    ? BusinessErrorCode.CARD_EXPIRED
+                    : BusinessErrorCode.CARD_NOT_ACTIVE;
+            throw new BusinessException(code, messageService.get(messageKey));
         }
     }
 
     private void validateDateRange(LocalDateTime from, LocalDateTime to) {
         if (from != null && to != null && from.isAfter(to)) {
-            throw new BusinessException(messageService.get("business.transfer.invalid-date-range"));
+            throw new BusinessException(
+                    BusinessErrorCode.INVALID_DATE_RANGE,
+                    messageService.get("business.transfer.invalid-date-range")
+            );
         }
     }
 
     private BigDecimal scaleMoney(BigDecimal value) {
+        if (value.stripTrailingZeros().scale() > 2) {
+            throw new BusinessException(
+                    BusinessErrorCode.INVALID_MONEY_SCALE,
+                    messageService.get("business.money.invalid-scale")
+            );
+        }
         return value.setScale(2, RoundingMode.HALF_UP);
     }
 }

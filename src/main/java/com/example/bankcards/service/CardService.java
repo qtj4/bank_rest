@@ -7,6 +7,7 @@ import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.entity.enums.CardStatus;
 import com.example.bankcards.exception.AccessDeniedOperationException;
+import com.example.bankcards.exception.BusinessErrorCode;
 import com.example.bankcards.exception.BusinessException;
 import com.example.bankcards.exception.ConflictException;
 import com.example.bankcards.exception.NotFoundException;
@@ -21,11 +22,15 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CardService {
+
+    private static final Logger log = LoggerFactory.getLogger(CardService.class);
 
     private final CardRepository cardRepository;
     private final UserService userService;
@@ -53,7 +58,10 @@ public class CardService {
     @Transactional
     public CardResponse create(CardCreateRequest request) {
         if (request.getExpirationDate().isBefore(LocalDate.now())) {
-            throw new BusinessException(messageService.get("business.card.create-expired"));
+            throw new BusinessException(
+                    BusinessErrorCode.CARD_CREATE_EXPIRED,
+                    messageService.get("business.card.create-expired")
+            );
         }
         String normalizedNumber = cardCryptoService.normalize(request.getNumber());
         String hash = cardCryptoService.hash(normalizedNumber);
@@ -70,7 +78,9 @@ public class CardService {
         card.setStatus(CardStatus.ACTIVE);
         card.setBalance(scaleMoney(request.getBalance()));
         try {
-            return cardMapper.toResponse(cardRepository.save(card));
+            Card saved = cardRepository.save(card);
+            log.info("card_created cardId={} ownerId={}", saved.getId(), owner.getId());
+            return cardMapper.toResponse(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ConflictException(messageService.get("business.card.duplicate"));
         }
@@ -119,7 +129,10 @@ public class CardService {
         Card card = getEntity(id);
         if (request.getExpirationDate() != null) {
             if (request.getExpirationDate().isBefore(LocalDate.now())) {
-                throw new BusinessException(messageService.get("business.card.expiration-past"));
+                throw new BusinessException(
+                        BusinessErrorCode.CARD_EXPIRATION_IN_PAST,
+                        messageService.get("business.card.expiration-past")
+                );
             }
             card.setExpirationDate(request.getExpirationDate());
         }
@@ -128,7 +141,10 @@ public class CardService {
         }
         if (request.getStatus() != null) {
             if (request.getStatus() == CardStatus.ACTIVE && card.getExpirationDate().isBefore(LocalDate.now())) {
-                throw new BusinessException(messageService.get("business.card.activate-expired"));
+                throw new BusinessException(
+                        BusinessErrorCode.CARD_EXPIRED,
+                        messageService.get("business.card.activate-expired")
+                );
             }
             card.setStatus(request.getStatus());
         }
@@ -141,6 +157,7 @@ public class CardService {
         card.setStatus(CardStatus.BLOCKED);
         card.setBlockRequested(false);
         card.setBlockRequestedAt(null);
+        log.info("card_blocked cardId={}", card.getId());
         return cardMapper.toResponse(card);
     }
 
@@ -148,11 +165,15 @@ public class CardService {
     public CardResponse activate(UUID id) {
         Card card = getEntity(id);
         if (card.getExpirationDate().isBefore(LocalDate.now())) {
-            throw new BusinessException(messageService.get("business.card.activate-expired"));
+            throw new BusinessException(
+                    BusinessErrorCode.CARD_EXPIRED,
+                    messageService.get("business.card.activate-expired")
+            );
         }
         card.setStatus(CardStatus.ACTIVE);
         card.setBlockRequested(false);
         card.setBlockRequestedAt(null);
+        log.info("card_activated cardId={}", card.getId());
         return cardMapper.toResponse(card);
     }
 
@@ -160,10 +181,14 @@ public class CardService {
     public CardResponse requestBlock(UUID id) {
         Card card = getOwnCard(id);
         if (card.getStatus() == CardStatus.BLOCKED) {
-            throw new BusinessException(messageService.get("business.card.already-blocked"));
+            throw new BusinessException(
+                    BusinessErrorCode.CARD_ALREADY_BLOCKED,
+                    messageService.get("business.card.already-blocked")
+            );
         }
         card.setBlockRequested(true);
         card.setBlockRequestedAt(LocalDateTime.now());
+        log.info("card_block_requested cardId={} userId={}", card.getId(), currentUserService.getCurrentUser().getId());
         return cardMapper.toResponse(card);
     }
 
@@ -171,7 +196,9 @@ public class CardService {
     public void delete(UUID id) {
         Card card = getEntity(id);
         card.setStatus(CardStatus.BLOCKED);
-        card.markDeleted(currentUserService.getCurrentUser().getId());
+        UUID deletedBy = currentUserService.getCurrentUser().getId();
+        card.markDeleted(deletedBy);
+        log.info("card_soft_deleted cardId={} deletedBy={}", card.getId(), deletedBy);
     }
 
     Card getEntity(UUID id) {
@@ -190,6 +217,12 @@ public class CardService {
     }
 
     private BigDecimal scaleMoney(BigDecimal value) {
+        if (value.stripTrailingZeros().scale() > 2) {
+            throw new BusinessException(
+                    BusinessErrorCode.INVALID_MONEY_SCALE,
+                    messageService.get("business.money.invalid-scale")
+            );
+        }
         return value.setScale(2, java.math.RoundingMode.HALF_UP);
     }
 }

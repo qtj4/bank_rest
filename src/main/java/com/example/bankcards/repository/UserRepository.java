@@ -8,8 +8,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
 
-    Optional<User> findByUsernameIgnoreCase(String username);
-
     Optional<User> findByUsernameIgnoreCaseAndDeletedAtIsNull(String username);
 
     Optional<User> findByIdAndDeletedAtIsNull(UUID id);

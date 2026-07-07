@@ -19,6 +19,7 @@
           "  pm.collectionVariables.set('testPassword', 'UserPass123');",
           "  pm.collectionVariables.set('cardNumber1', '411111111111' + suffix.slice(-4));",
           "  pm.collectionVariables.set('cardNumber2', '422222222222' + suffix.slice(-4));",
+          "  pm.collectionVariables.set('cardNumber3', '433333333333' + suffix.slice(-4));",
           "  pm.collectionVariables.set('futureExpirationDate', new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));",
           "  pm.collectionVariables.set('pastExpirationDate', '2000-01-01');",
           "}"
@@ -42,7 +43,8 @@
     { "key": "futureExpirationDate", "value": "" },
     { "key": "pastExpirationDate", "value": "2000-01-01" },
     { "key": "cardNumber1", "value": "" },
-    { "key": "cardNumber2", "value": "" }
+    { "key": "cardNumber2", "value": "" },
+    { "key": "cardNumber3", "value": "" }
   ],
   "item": [
     {
@@ -127,6 +129,21 @@
       ] } }]
     },
     {
+      "name": "05a Negative - Create Card Money Scale",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"number\": \"{{cardNumber3}}\",\n  \"ownerId\": \"{{userId}}\",\n  \"expirationDate\": \"{{futureExpirationDate}}\",\n  \"balance\": 10.999\n}" },
+        "url": "{{baseUrl}}/api/v1/cards"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('card balance with more than 2 decimals is rejected', () => pm.response.to.have.status(400));",
+        "const json = pm.response.json();",
+        "pm.test('balance validation error returned', () => { pm.expect(json.error).to.eql('VALIDATION_ERROR'); pm.expect(json.fieldErrors.balance).to.exist; });"
+      ] } }]
+    },
+    {
       "name": "06 Cards - User List My Cards",
       "request": {
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
@@ -136,6 +153,19 @@
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
         "pm.test('my cards listed', () => pm.response.to.have.status(200));",
         "pm.test('contains content', () => pm.expect(pm.response.json().content.length).to.be.greaterThan(0));"
+      ] } }]
+    },
+    {
+      "name": "06a Cards - User List My Cards Page Size Cap",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/cards/my?page=0&size=1000"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('page size is capped and request succeeds', () => pm.response.to.have.status(200));",
+        "const json = pm.response.json();",
+        "pm.test('effective page size is not above 100', () => { pm.expect(json.size).to.be.at.most(100); pm.expect(json.content.length).to.be.at.most(100); });"
       ] } }]
     },
     {
@@ -209,6 +239,35 @@
       ] } }]
     },
     {
+      "name": "12a Negative - Transfer To Same Card",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"fromCardId\": \"{{card1Id}}\",\n  \"toCardId\": \"{{card1Id}}\",\n  \"amount\": 1.00\n}" },
+        "url": "{{baseUrl}}/api/v1/transfers"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('same-card transfer rejected', () => pm.response.to.have.status(400));",
+        "pm.test('specific same-card code', () => pm.expect(pm.response.json().error).to.eql('SAME_CARD_TRANSFER'));"
+      ] } }]
+    },
+    {
+      "name": "12b Negative - Transfer Money Scale",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"fromCardId\": \"{{card1Id}}\",\n  \"toCardId\": \"{{card2Id}}\",\n  \"amount\": 1.999\n}" },
+        "url": "{{baseUrl}}/api/v1/transfers"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('transfer amount with more than 2 decimals is rejected', () => pm.response.to.have.status(400));",
+        "const json = pm.response.json();",
+        "pm.test('amount validation error returned', () => { pm.expect(json.error).to.eql('VALIDATION_ERROR'); pm.expect(json.fieldErrors.amount).to.exist; });"
+      ] } }]
+    },
+    {
       "name": "13 Negative - Transfer With Blocked Card",
       "request": {
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
@@ -219,7 +278,7 @@
       },
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
         "pm.test('blocked transfer rejected', () => pm.response.to.have.status(400));",
-        "pm.test('business error', () => pm.expect(pm.response.json().error).to.eql('BUSINESS_RULE_VIOLATION'));"
+        "pm.test('specific business code', () => pm.expect(pm.response.json().error).to.eql('CARD_NOT_ACTIVE'));"
       ] } }]
     },
     {
@@ -288,7 +347,10 @@
         "body": { "mode": "raw", "raw": "{\n  \"number\": \"4444444444444444\",\n  \"ownerId\": \"{{userId}}\",\n  \"expirationDate\": \"{{pastExpirationDate}}\",\n  \"balance\": 10.00\n}" },
         "url": "{{baseUrl}}/api/v1/cards"
       },
-      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('expired card rejected', () => pm.response.to.have.status(400));"] } }]
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('expired card rejected', () => pm.response.to.have.status(400));",
+        "pm.test('specific expired-create code', () => pm.expect(pm.response.json().error).to.eql('CARD_CREATE_EXPIRED'));"
+      ] } }]
     },
     {
       "name": "20 Negative - Insufficient Balance",
@@ -299,7 +361,10 @@
         "body": { "mode": "raw", "raw": "{\n  \"fromCardId\": \"{{card1Id}}\",\n  \"toCardId\": \"{{card2Id}}\",\n  \"amount\": 999999.00\n}" },
         "url": "{{baseUrl}}/api/v1/transfers"
       },
-      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('insufficient balance rejected', () => pm.response.to.have.status(400));"] } }]
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('insufficient balance rejected', () => pm.response.to.have.status(400));",
+        "pm.test('specific insufficient-funds code', () => pm.expect(pm.response.json().error).to.eql('INSUFFICIENT_FUNDS'));"
+      ] } }]
     },
     {
       "name": "21 Negative - Invalid Date Range",
@@ -308,7 +373,10 @@
         "method": "GET",
         "url": "{{baseUrl}}/api/v1/transfers/my?from=2099-01-01T00:00:00&to=2020-01-01T00:00:00"
       },
-      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('invalid range rejected', () => pm.response.to.have.status(400));"] } }]
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('invalid range rejected', () => pm.response.to.have.status(400));",
+        "pm.test('specific invalid-date-range code', () => pm.expect(pm.response.json().error).to.eql('INVALID_DATE_RANGE'));"
+      ] } }]
     },
     {
       "name": "22 Admin Transfers - List All",

@@ -168,6 +168,17 @@ class CardServiceTest {
                 .hasMessageContaining("Expired");
     }
 
+    @Test
+    void activeExpiredCardIsReturnedAsExpiredInResponse() {
+        Card card = card(owner, CardStatus.ACTIVE);
+        card.setExpirationDate(LocalDate.now().minusDays(1));
+        when(cardRepository.findByIdAndDeletedAtIsNull(card.getId())).thenReturn(Optional.of(card));
+
+        CardResponse response = cardService.getAdmin(card.getId());
+
+        assertThat(response.getStatus()).isEqualTo(CardStatus.EXPIRED);
+    }
+
     private User user(UUID id) {
         User user = new User();
         user.setId(id);
@@ -192,24 +203,21 @@ class CardServiceTest {
     }
 
     private CardMapper testCardMapper() {
-        return new CardMapper() {
-            @Override
-            public CardResponse toResponse(Card card) {
-                return CardResponse.builder()
-                        .id(card.getId())
-                        .maskedNumber(CardServiceTest.this.cardCryptoService.mask(card.getLastFourDigits()))
-                        .ownerId(card.getOwner().getId())
-                        .ownerName(card.getOwner().getFullName())
-                        .expirationDate(card.getExpirationDate())
-                        .status(card.getStatus())
-                        .balance(card.getBalance())
-                        .blockRequested(card.isBlockRequested())
-                        .createdAt(card.getCreatedAt())
-                        .updatedAt(card.getUpdatedAt())
-                        .deletedAt(card.getDeletedAt())
-                        .deletedBy(card.getDeletedBy())
-                        .build();
-            }
-        };
+        return card -> CardResponse.builder()
+                .id(card.getId())
+                .maskedNumber(CardServiceTest.this.cardCryptoService.mask(card.getLastFourDigits()))
+                .ownerId(card.getOwner().getId())
+                .ownerName(card.getOwner().getFullName())
+                .expirationDate(card.getExpirationDate())
+                .status(card.getStatus() == CardStatus.ACTIVE && card.getExpirationDate().isBefore(LocalDate.now())
+                        ? CardStatus.EXPIRED
+                        : card.getStatus())
+                .balance(card.getBalance())
+                .blockRequested(card.isBlockRequested())
+                .createdAt(card.getCreatedAt())
+                .updatedAt(card.getUpdatedAt())
+                .deletedAt(card.getDeletedAt())
+                .deletedBy(card.getDeletedBy())
+                .build();
     }
 }

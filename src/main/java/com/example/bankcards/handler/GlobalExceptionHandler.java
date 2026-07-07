@@ -16,6 +16,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,6 +25,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private final MessageService messageService;
 
@@ -37,16 +41,19 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException exception) {
-        return error(HttpStatus.BAD_REQUEST, "BUSINESS_RULE_VIOLATION", exception.getMessage());
+        log.info("business_error code={}", exception.getCode());
+        return error(HttpStatus.BAD_REQUEST, exception.getCode(), exception.getMessage());
     }
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflict(ConflictException exception) {
+        log.info("conflict_error code=DATA_INTEGRITY_ERROR");
         return error(HttpStatus.CONFLICT, "DATA_INTEGRITY_ERROR", exception.getMessage());
     }
 
     @ExceptionHandler({AccessDeniedOperationException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponse> handleForbidden(RuntimeException exception) {
+        log.info("access_denied");
         return error(HttpStatus.FORBIDDEN, "FORBIDDEN", exception.getMessage());
     }
 
@@ -84,7 +91,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleUnexpected() {
+    public ResponseEntity<ErrorResponse> handleUnexpected(Exception exception) {
+        log.error("unexpected_error type={}", exception.getClass().getSimpleName(), exception);
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", messageService.get("error.unexpected"));
     }
 

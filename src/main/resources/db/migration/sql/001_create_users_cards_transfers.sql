@@ -13,6 +13,7 @@ create table app_user
     updated_at timestamp without time zone not null,
     deleted_at timestamp without time zone,
     deleted_by uuid,
+    constraint app_user_deleted_by_fk foreign key (deleted_by) references app_user (id),
     constraint app_user_role_check check (role in ('ADMIN', 'USER'))
 );
 
@@ -35,6 +36,7 @@ create table card
     deleted_at timestamp without time zone,
     deleted_by uuid,
     constraint card_owner_fk foreign key (owner_id) references app_user (id),
+    constraint card_deleted_by_fk foreign key (deleted_by) references app_user (id),
     constraint card_status_check check (status in ('ACTIVE', 'BLOCKED', 'EXPIRED')),
     constraint card_balance_non_negative_check check (balance >= 0),
     constraint card_last_four_digits_check check (last_four_digits ~ '^[0-9]{4}$')
@@ -58,6 +60,7 @@ create table card_transfer
     deleted_by uuid,
     constraint card_transfer_from_card_fk foreign key (from_card_id) references card (id),
     constraint card_transfer_to_card_fk foreign key (to_card_id) references card (id),
+    constraint card_transfer_deleted_by_fk foreign key (deleted_by) references app_user (id),
     constraint card_transfer_amount_positive_check check (amount > 0),
     constraint card_transfer_different_cards_check check (from_card_id <> to_card_id)
 );

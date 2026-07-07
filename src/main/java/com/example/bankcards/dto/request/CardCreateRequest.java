@@ -1,6 +1,7 @@
 package com.example.bankcards.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -30,5 +31,6 @@ public class CardCreateRequest {
 
     @NotNull(message = "{validation.balance.required}")
     @DecimalMin(value = "0.00", message = "{validation.balance.min}")
+    @Digits(integer = 17, fraction = 2, message = "{validation.money.scale}")
     private BigDecimal balance;
 }

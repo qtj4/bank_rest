@@ -26,6 +26,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
   /api/v1/auth/login:
     post:
       tags: [Authentication]
@@ -44,6 +48,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
   /api/v1/admin/users:
     post:
       tags: [Admin users]
@@ -61,6 +69,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
     get:
       tags: [Admin users]
       summary: List users
@@ -79,6 +95,10 @@ paths:
       responses:
         '200':
           description: Page of users
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
   /api/v1/admin/users/{id}:
     get:
       tags: [Admin users]
@@ -131,6 +151,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CardResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
   /api/v1/cards/all:
     get:
       tags: [Cards]
@@ -150,6 +180,10 @@ paths:
       responses:
         '200':
           description: Page of cards
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
   /api/v1/cards/my:
     get:
       tags: [Cards]
@@ -166,6 +200,8 @@ paths:
       responses:
         '200':
           description: Page of cards
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
   /api/v1/cards/{id}:
     get:
       tags: [Cards]
@@ -175,6 +211,12 @@ paths:
       responses:
         '200':
           description: Card
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
     put:
       tags: [Cards]
       summary: Update card as admin
@@ -189,6 +231,14 @@ paths:
       responses:
         '200':
           description: Updated
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
     delete:
       tags: [Cards]
       summary: Delete card or block it when transfer history exists
@@ -197,6 +247,12 @@ paths:
       responses:
         '204':
           description: Deleted or blocked
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/cards/my/{id}:
     get:
       tags: [Cards]
@@ -206,6 +262,12 @@ paths:
       responses:
         '200':
           description: Card
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/cards/{id}/balance:
     get:
       tags: [Cards]
@@ -215,6 +277,12 @@ paths:
       responses:
         '200':
           description: Balance
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/cards/{id}/block:
     patch:
       tags: [Cards]
@@ -224,6 +292,14 @@ paths:
       responses:
         '200':
           description: Blocked
+        '400':
+          $ref: '#/components/responses/BusinessError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/cards/{id}/activate:
     patch:
       tags: [Cards]
@@ -233,6 +309,14 @@ paths:
       responses:
         '200':
           description: Activated
+        '400':
+          $ref: '#/components/responses/BusinessError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/cards/{id}/block-request:
     post:
       tags: [Cards]
@@ -242,6 +326,14 @@ paths:
       responses:
         '200':
           description: Block requested
+        '400':
+          $ref: '#/components/responses/BusinessError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/transfers:
     post:
       tags: [Transfers]
@@ -255,6 +347,14 @@ paths:
       responses:
         '201':
           description: Transfer created
+        '400':
+          $ref: '#/components/responses/BusinessError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/transfers/my:
     get:
       tags: [Transfers]
@@ -271,6 +371,10 @@ paths:
       responses:
         '200':
           description: Page of transfers
+        '400':
+          $ref: '#/components/responses/BusinessError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
   /api/v1/transfers/{id}:
     get:
       tags: [Transfers]
@@ -280,6 +384,12 @@ paths:
       responses:
         '200':
           description: Transfer
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/admin/transfers:
     get:
       tags: [Transfers]
@@ -299,6 +409,12 @@ paths:
       responses:
         '200':
           description: Page of transfers
+        '400':
+          $ref: '#/components/responses/BusinessError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
 components:
   securitySchemes:
     bearerAuth:
@@ -322,9 +438,91 @@ components:
     size:
       name: size
       in: query
+      description: Page size is capped at 100 by the API.
       schema:
         type: integer
-        default: 10
+        default: 20
+        maximum: 100
+        minimum: 1
+  responses:
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: VALIDATION_ERROR
+            status: 400
+            message: Validation failed
+            fieldErrors:
+              amount: must be a monetary value with up to 2 decimal places
+            timestamp: '2026-07-08T12:00:00'
+    UnauthorizedError:
+      description: JWT is missing, expired, or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: UNAUTHORIZED
+            status: 401
+            message: Authentication is required
+            timestamp: '2026-07-08T12:00:00'
+    ForbiddenError:
+      description: Authenticated principal does not have permission for the operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: FORBIDDEN
+            status: 403
+            message: Access denied
+            timestamp: '2026-07-08T12:00:00'
+    NotFoundError:
+      description: Resource was not found or is not visible to the caller
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: NOT_FOUND
+            status: 404
+            message: Card not found
+            timestamp: '2026-07-08T12:00:00'
+    ConflictError:
+      description: Request conflicts with existing persisted data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: DATA_INTEGRITY_ERROR
+            status: 409
+            message: Card number already exists
+            timestamp: '2026-07-08T12:00:00'
+    BusinessError:
+      description: Business rule rejected the request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            insufficientFunds:
+              summary: Insufficient funds
+              value:
+                error: INSUFFICIENT_FUNDS
+                status: 400
+                message: Insufficient funds
+                timestamp: '2026-07-08T12:00:00'
+            blockedCard:
+              summary: Card is not active
+              value:
+                error: CARD_NOT_ACTIVE
+                status: 400
+                message: Card must be active
+                timestamp: '2026-07-08T12:00:00'
   schemas:
     Role:
       type: string
@@ -368,20 +566,20 @@ components:
         number: { type: string, example: '1234 5678 9012 3456' }
         ownerId: { type: string, format: uuid }
         expirationDate: { type: string, format: date }
-        balance: { type: number, format: decimal, example: 100.00 }
+        balance: { type: number, format: decimal, multipleOf: 0.01, example: 100.00 }
     CardUpdateRequest:
       type: object
       properties:
         expirationDate: { type: string, format: date }
         status: { $ref: '#/components/schemas/CardStatus' }
-        balance: { type: number, format: decimal }
+        balance: { type: number, format: decimal, multipleOf: 0.01 }
     TransferRequest:
       type: object
       required: [fromCardId, toCardId, amount]
       properties:
         fromCardId: { type: string, format: uuid }
         toCardId: { type: string, format: uuid }
-        amount: { type: number, format: decimal, example: 25.00 }
+        amount: { type: number, format: decimal, multipleOf: 0.01, example: 25.00 }
         description: { type: string, maxLength: 255 }
     AuthResponse:
       type: object
@@ -412,7 +610,7 @@ components:
         ownerName: { type: string }
         expirationDate: { type: string, format: date }
         status: { $ref: '#/components/schemas/CardStatus' }
-        balance: { type: number, format: decimal }
+        balance: { type: number, format: decimal, multipleOf: 0.01 }
         blockRequested: { type: boolean }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }

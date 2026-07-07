@@ -188,20 +188,15 @@ class TransferServiceTest {
 
     private TransferMapper testTransferMapper(CardCryptoService cardCryptoService) {
         CardCryptoService crypto = cardCryptoService;
-        return new TransferMapper() {
-            @Override
-            public com.example.bankcards.dto.response.TransferResponse toResponse(Transfer transfer) {
-                return com.example.bankcards.dto.response.TransferResponse.builder()
-                        .id(transfer.getId())
-                        .fromCardId(transfer.getFromCard().getId())
-                        .fromMaskedNumber(crypto.mask(transfer.getFromCard().getLastFourDigits()))
-                        .toCardId(transfer.getToCard().getId())
-                        .toMaskedNumber(crypto.mask(transfer.getToCard().getLastFourDigits()))
-                        .amount(transfer.getAmount())
-                        .description(transfer.getDescription())
-                        .createdAt(transfer.getCreatedAt())
-                        .build();
-            }
-        };
+        return transfer -> com.example.bankcards.dto.response.TransferResponse.builder()
+                .id(transfer.getId())
+                .fromCardId(transfer.getFromCard().getId())
+                .fromMaskedNumber(crypto.mask(transfer.getFromCard().getLastFourDigits()))
+                .toCardId(transfer.getToCard().getId())
+                .toMaskedNumber(crypto.mask(transfer.getToCard().getLastFourDigits()))
+                .amount(transfer.getAmount())
+                .description(transfer.getDescription())
+                .createdAt(transfer.getCreatedAt())
+                .build();
     }
 }

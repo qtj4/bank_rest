@@ -2,20 +2,15 @@ package com.example.bankcards.mapper;
 
 import com.example.bankcards.dto.response.TransferResponse;
 import com.example.bankcards.entity.Transfer;
-import com.example.bankcards.service.CardCryptoService;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.springframework.beans.factory.annotation.Autowired;
 
-@Mapper(componentModel = "spring")
-public abstract class TransferMapper {
-
-    @Autowired
-    protected CardCryptoService cardCryptoService;
+@Mapper(componentModel = "spring", uses = CardMappingHelper.class)
+public interface TransferMapper {
 
     @Mapping(target = "fromCardId", source = "fromCard.id")
-    @Mapping(target = "fromMaskedNumber", expression = "java(cardCryptoService.mask(transfer.getFromCard().getLastFourDigits()))")
+    @Mapping(target = "fromMaskedNumber", source = "fromCard.lastFourDigits", qualifiedByName = "mask")
     @Mapping(target = "toCardId", source = "toCard.id")
-    @Mapping(target = "toMaskedNumber", expression = "java(cardCryptoService.mask(transfer.getToCard().getLastFourDigits()))")
-    public abstract TransferResponse toResponse(Transfer transfer);
+    @Mapping(target = "toMaskedNumber", source = "toCard.lastFourDigits", qualifiedByName = "mask")
+    TransferResponse toResponse(Transfer transfer);
 }
